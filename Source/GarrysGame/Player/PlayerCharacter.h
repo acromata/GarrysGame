@@ -62,8 +62,7 @@ protected:
 
 	bool bCanMove;
 
-	// Sprinting & Crouching
-
+	// Sprinting
 	UFUNCTION(Server, Unreliable)
 	void StartSprint();
 	UFUNCTION(Server, Unreliable)
@@ -71,9 +70,6 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void HandleSprint();
 
-	void StartCrouch();
-
-	void EndCrouch();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float CrouchSpeed;
@@ -85,12 +81,23 @@ protected:
 	UPROPERTY(Replicated)
 	bool bIsRunning;
 
+	// Crouching
+	UFUNCTION(Server, Unreliable)
+	void StartCrouch();
+	UFUNCTION(Server, Unreliable)
+	void EndCrouch();
+	UFUNCTION(NetMulticast, Unreliable)
+	void HandleCrouch();
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float SlideForce;
 	UPROPERTY(Replicated)
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float CounterSlideForce;
+
+	UPROPERTY(Replicated)
+	bool bIsCrouching;
 
 	// Health
 	UPROPERTY(EditDefaultsOnly, Category = "Health")

@@ -90,8 +90,6 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	// Replicate Current Health
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
-	DOREPLIFETIME(APlayerCharacter, CurrentSlideForce);
-	//DOREPLIFETIME(APlayerCharacter, bIsRunning);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& InputValue)
@@ -152,7 +150,7 @@ void APlayerCharacter::EndSprint_Implementation()
 
 void APlayerCharacter::HandleSprint_Implementation()
 {
-	if (bIsRunning == true)
+	if (bIsRunning)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 	}
@@ -166,9 +164,24 @@ void APlayerCharacter::HandleSprint_Implementation()
 
 #pragma region Crouch
 
-void APlayerCharacter::StartCrouch()
+void APlayerCharacter::StartCrouch_Implementation()
 {
 	if (GetCharacterMovement()->CanCrouchInCurrentState())
+	{
+		bIsCrouching = true;
+		HandleCrouch();
+	}
+}
+
+void APlayerCharacter::EndCrouch_Implementation()
+{
+	bIsCrouching = false;
+	HandleCrouch();
+}
+
+void APlayerCharacter::HandleCrouch_Implementation()
+{
+	if (bIsCrouching)
 	{
 		// Crouch
 		Crouch();
@@ -187,16 +200,15 @@ void APlayerCharacter::StartCrouch()
 			bUseControllerRotationYaw = false;
 		}
 	}
-}
+	else
+	{
+		// Uncrouch
+		UnCrouch();
 
-void APlayerCharacter::EndCrouch()
-{
-	// Uncrouch
-	UnCrouch();
-
-	// Unslide
-	bCanMove = true;
-	bUseControllerRotationYaw = true;
-	CurrentSlideForce = SlideForce;
+		// Unslide
+		bCanMove = true;
+		bUseControllerRotationYaw = true;
+		CurrentSlideForce = SlideForce;
+	}
 }
 #pragma endregion
