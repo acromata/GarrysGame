@@ -70,7 +70,6 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void HandleSprint();
 
-
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float CrouchSpeed;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
@@ -89,15 +88,19 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void HandleCrouch();
 
+	UPROPERTY(Replicated)
+	bool bIsCrouching;
+	UPROPERTY(Replicated)
+	bool bIsSliding;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float SlideForce;
 	UPROPERTY(Replicated)
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float CounterSlideForce;
-
-	UPROPERTY(Replicated)
-	bool bIsCrouching;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FVector SlideDirection;
 
 	// Health
 	UPROPERTY(EditDefaultsOnly, Category = "Health")

@@ -88,8 +88,13 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	// Replicate Current Health
+	// Replicate Variables
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
+	DOREPLIFETIME(APlayerCharacter, bIsRunning);
+	DOREPLIFETIME(APlayerCharacter, bIsCrouching);
+	DOREPLIFETIME(APlayerCharacter, CurrentSlideForce);
+	DOREPLIFETIME(APlayerCharacter, SlideDirection);
+	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& InputValue)
@@ -128,6 +133,7 @@ void APlayerCharacter::Jump()
 }
 
 #pragma region Sprint
+
 void APlayerCharacter::StartSprint_Implementation()
 {
 	if (GetVelocity().Size() >= 0.5 && !GetCharacterMovement()->IsCrouching())
@@ -166,45 +172,65 @@ void APlayerCharacter::HandleSprint_Implementation()
 
 void APlayerCharacter::StartCrouch_Implementation()
 {
-	if (GetCharacterMovement()->CanCrouchInCurrentState())
+	if (GetCharacterMovement()->CanCrouchInCurrentState() && GetCharacterMovement()->IsMovingOnGround())
 	{
 		bIsCrouching = true;
-		HandleCrouch();
+
+		if (GetVelocity().Size() >= WalkSpeed + 50.f)
+		{
+			// Get Slide Direction
+			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
+			SlideDirection.Z = 0;
+
+			// Allow Sliding
+			bIsSliding = true;
+		}
 	}
+
+	else
+	{
+		bIsSliding = false;
+	}
+
+	HandleCrouch();
 }
 
 void APlayerCharacter::EndCrouch_Implementation()
 {
 	bIsCrouching = false;
+	bIsSliding = false;
 	HandleCrouch();
 }
 
 void APlayerCharacter::HandleCrouch_Implementation()
 {
+	// Crouch
 	if (bIsCrouching)
 	{
 		// Crouch
 		Crouch();
-
-		// Slide
-		if (GetVelocity().Size() >= WalkSpeed + 20.f)
-		{
-			// Add Forward Force
-			GetCharacterMovement()->Launch(CurrentSlideForce * GetActorForwardVector());
-
-			// Add Counterforce
-			CurrentSlideForce -= CounterSlideForce;
-
-			// Disable Movement
-			bCanMove = false;
-			bUseControllerRotationYaw = false;
-		}
 	}
 	else
 	{
 		// Uncrouch
 		UnCrouch();
+	}
 
+	// Slide
+	if (bIsSliding)
+	{
+		// Add Forward Force
+		GetCharacterMovement()->Launch(SlideDirection);
+
+		// Add Counterforce
+		CurrentSlideForce -= CounterSlideForce;
+
+		// Disable Movement
+		bCanMove = false;
+		bUseControllerRotationYaw = false;
+	}
+	else
+	{
 		// Unslide
 		bCanMove = true;
 		bUseControllerRotationYaw = true;
