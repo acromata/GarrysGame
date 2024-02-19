@@ -91,9 +91,9 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Replicate Variables
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
 	DOREPLIFETIME(APlayerCharacter, bIsRunning);
-	DOREPLIFETIME(APlayerCharacter, bIsCrouching);
 	DOREPLIFETIME(APlayerCharacter, CurrentSlideForce);
 	DOREPLIFETIME(APlayerCharacter, SlideDirection);
+	DOREPLIFETIME(APlayerCharacter, bIsCrouching);
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 }
 
@@ -185,11 +185,10 @@ void APlayerCharacter::StartCrouch_Implementation()
 			// Allow Sliding
 			bIsSliding = true;
 		}
-	}
-
-	else
-	{
-		bIsSliding = false;
+		else
+		{
+			bIsSliding = false;
+		}
 	}
 
 	HandleCrouch();
@@ -205,7 +204,7 @@ void APlayerCharacter::EndCrouch_Implementation()
 void APlayerCharacter::HandleCrouch_Implementation()
 {
 	// Crouch
-	if (bIsCrouching)
+	if (bIsCrouching && !bIsSliding)
 	{
 		// Crouch
 		Crouch();

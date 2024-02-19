@@ -88,9 +88,9 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void HandleCrouch();
 
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsCrouching;
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsSliding;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
