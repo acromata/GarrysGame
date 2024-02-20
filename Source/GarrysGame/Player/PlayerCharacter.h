@@ -60,6 +60,9 @@ protected:
 	void Look(const FInputActionValue& InputValue);
 	void Jump();
 
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Jump")
+	float JumpForceWhileSliding;
+
 	bool bCanMove;
 
 	// Sprinting
@@ -101,6 +104,9 @@ protected:
 	float CounterSlideForce;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bIsAwaitingSlideJump;
 
 	// Health
 	UPROPERTY(EditDefaultsOnly, Category = "Health")

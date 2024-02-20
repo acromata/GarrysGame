@@ -22,15 +22,16 @@ APlayerCharacter::APlayerCharacter()
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 
+	// Movement
+	bCanMove = true;
+	JumpForceWhileSliding = 420.f;
+
 	// Speeds
 	CrouchSpeed = 400.f;
 	WalkSpeed = 400.f;
 	RunSpeed = 800.f;
 	SlideForce = 1000.f;
 	CounterSlideForce = 1.f;
-
-	// Movement
-	bCanMove = true;
 }
 
 // Called when the game starts or when spawned
@@ -95,6 +96,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, SlideDirection);
 	DOREPLIFETIME(APlayerCharacter, bIsCrouching);
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
+	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
 }
 
 void APlayerCharacter::Move(const FInputActionValue& InputValue)
@@ -129,14 +131,21 @@ void APlayerCharacter::Look(const FInputActionValue& InputValue)
 
 void APlayerCharacter::Jump()
 {
-	ACharacter::Jump();
+	if (bIsSliding)
+	{
+		bIsAwaitingSlideJump = true;
+	}
+	else
+	{
+		ACharacter::Jump();
+	}
 }
 
 #pragma region Sprint
 
 void APlayerCharacter::StartSprint_Implementation()
 {
-	if (GetVelocity().Size() >= 0.5 && !GetCharacterMovement()->IsCrouching())
+	if (GetVelocity().Size() >= 0.5)
 	{
 		bIsRunning = true;
 	}
@@ -156,7 +165,7 @@ void APlayerCharacter::EndSprint_Implementation()
 
 void APlayerCharacter::HandleSprint_Implementation()
 {
-	if (bIsRunning)
+	if (bIsRunning && !bIsCrouched)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 	}
@@ -172,23 +181,35 @@ void APlayerCharacter::HandleSprint_Implementation()
 
 void APlayerCharacter::StartCrouch_Implementation()
 {
-	if (GetCharacterMovement()->CanCrouchInCurrentState() && GetCharacterMovement()->IsMovingOnGround())
+	if (GetCharacterMovement()->CanCrouchInCurrentState())
 	{
-		bIsCrouching = true;
+		bIsCrouching = true; 
 
-		if (GetVelocity().Size() >= WalkSpeed + 50.f)
+		if (bIsRunning && CurrentSlideForce > CrouchSpeed)
 		{
-			// Get Slide Direction
-			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
-			SlideDirection.Z = 0;
-
 			// Allow Sliding
 			bIsSliding = true;
+
+			// Get Slide Direction
+			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
+			if (bIsAwaitingSlideJump)
+			{
+				SlideDirection.Z = JumpForceWhileSliding;
+			}
+			else
+			{
+				SlideDirection.Z = 0.f;
+			}
 		}
 		else
 		{
 			bIsSliding = false;
 		}
+	}
+	else
+	{
+		bIsCrouching = false;
+		bIsSliding = false;
 	}
 
 	HandleCrouch();
@@ -204,7 +225,7 @@ void APlayerCharacter::EndCrouch_Implementation()
 void APlayerCharacter::HandleCrouch_Implementation()
 {
 	// Crouch
-	if (bIsCrouching && !bIsSliding)
+	if (bIsCrouching)
 	{
 		// Crouch
 		Crouch();
@@ -213,27 +234,34 @@ void APlayerCharacter::HandleCrouch_Implementation()
 	{
 		// Uncrouch
 		UnCrouch();
+
+		// Reset slide
+		CurrentSlideForce = SlideForce;
 	}
 
 	// Slide
-	if (bIsSliding)
+	if (bIsSliding && bIsCrouched)
 	{
 		// Add Forward Force
-		GetCharacterMovement()->Launch(SlideDirection);
+		LaunchCharacter(SlideDirection, true, true);
 
 		// Add Counterforce
 		CurrentSlideForce -= CounterSlideForce;
 
-		// Disable Movement
-		bCanMove = false;
+		// Disable movement when turning camera
 		bUseControllerRotationYaw = false;
+
+		// Disable jump force
+		//bIsAwaitingSlideJump = false;
 	}
 	else
 	{
 		// Unslide
 		bCanMove = true;
 		bUseControllerRotationYaw = true;
-		CurrentSlideForce = SlideForce;
 	}
 }
+
 #pragma endregion
+
+
