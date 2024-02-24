@@ -75,7 +75,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		Input->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
 
-		Input->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Jump);
+		Input->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayerCharacter::OnJump);
 
 		Input->BindAction(SprintAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartSprint);
 		Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndSprint);
@@ -129,7 +129,7 @@ void APlayerCharacter::Look(const FInputActionValue& InputValue)
 	}
 }
 
-void APlayerCharacter::Jump()
+void APlayerCharacter::OnJump_Implementation()
 {
 	if (bIsSliding)
 	{
@@ -185,14 +185,14 @@ void APlayerCharacter::StartCrouch_Implementation()
 	{
 		bIsCrouching = true; 
 
-		if (bIsRunning && CurrentSlideForce > CrouchSpeed)
+		if (bIsRunning && CurrentSlideForce > CrouchSpeed && (GetCharacterMovement()->IsMovingOnGround() || bIsSliding))
 		{
 			// Allow Sliding
 			bIsSliding = true;
 
 			// Get Slide Direction
 			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
-			if (bIsAwaitingSlideJump)
+			if (bIsAwaitingSlideJump && GetCharacterMovement()->IsMovingOnGround())
 			{
 				SlideDirection.Z = JumpForceWhileSliding;
 			}
@@ -243,7 +243,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 	if (bIsSliding && bIsCrouched)
 	{
 		// Add Forward Force
-		LaunchCharacter(SlideDirection, true, true);
+		LaunchCharacter(SlideDirection, true, false); // Works on server, not on client
 
 		// Add Counterforce
 		CurrentSlideForce -= CounterSlideForce;
@@ -252,7 +252,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		bUseControllerRotationYaw = false;
 
 		// Disable jump force
-		//bIsAwaitingSlideJump = false;
+		bIsAwaitingSlideJump = false;
 	}
 	else
 	{

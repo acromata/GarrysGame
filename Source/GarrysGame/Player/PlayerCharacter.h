@@ -58,7 +58,8 @@ protected:
 	// Movement
 	void Move(const FInputActionValue& InputValue);
 	void Look(const FInputActionValue& InputValue);
-	void Jump();
+	UFUNCTION(Server, Reliable)
+	void OnJump();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Jump")
 	float JumpForceWhileSliding;
