@@ -11,7 +11,7 @@
 // Sets default values
 APlayerCharacter::APlayerCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	// Set this character to call Tick() every frame. You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	// Camera
@@ -30,8 +30,20 @@ APlayerCharacter::APlayerCharacter()
 	CrouchSpeed = 400.f;
 	WalkSpeed = 400.f;
 	RunSpeed = 800.f;
+
+	// Slide
 	SlideForce = 1000.f;
 	CounterSlideForce = 1.f;
+	SlideJumpDelay = 10.f;
+
+	// Hitting
+	bCanHit = true;
+	HitDistance = 100.f;
+	HitDelay = 0.5f;
+	HitForce = 1000.f;
+
+	// Health
+	MaxHealth = 100.f;
 }
 
 // Called when the game starts or when spawned
@@ -43,6 +55,10 @@ void APlayerCharacter::BeginPlay()
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
 	CurrentSlideForce = SlideForce;
+
+	// Health
+	CurrentHealth = MaxHealth;
+	
 }
 
 // Called every frame
@@ -80,8 +96,10 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		Input->BindAction(SprintAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartSprint);
 		Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndSprint);
 
-		Input->BindAction(SlideAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartCrouch);
-		Input->BindAction(SlideAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndCrouch);
+		Input->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartCrouch);
+		Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndCrouch);
+
+		Input->BindAction(HitAction, ETriggerEvent::Completed, this, &APlayerCharacter::ServerHit);
 	}
 }
 
@@ -89,14 +107,26 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	// Replicate Variables
+	// Health
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
+
+	// Running
 	DOREPLIFETIME(APlayerCharacter, bIsRunning);
+
+	// Crouch
+	DOREPLIFETIME(APlayerCharacter, bIsCrouching);
+
+	// Sliding
 	DOREPLIFETIME(APlayerCharacter, CurrentSlideForce);
 	DOREPLIFETIME(APlayerCharacter, SlideDirection);
-	DOREPLIFETIME(APlayerCharacter, bIsCrouching);
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
+	DOREPLIFETIME(APlayerCharacter, CurrentSlideJumpDelay);
+
+	// Hitting
+	DOREPLIFETIME(APlayerCharacter, HitDirection);
+	DOREPLIFETIME(APlayerCharacter, bCanHit);
+
 }
 
 void APlayerCharacter::Move(const FInputActionValue& InputValue)
@@ -137,8 +167,14 @@ void APlayerCharacter::OnJump_Implementation()
 	}
 	else
 	{
-		ACharacter::Jump();
+		HandleJump();
 	}
+}
+
+void APlayerCharacter::HandleJump_Implementation()
+{
+	ACharacter::Jump();
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Hello");
 }
 
 #pragma region Sprint
@@ -190,11 +226,18 @@ void APlayerCharacter::StartCrouch_Implementation()
 			// Allow Sliding
 			bIsSliding = true;
 
+			// Jump delay timer
+			CurrentSlideJumpDelay--;
+
 			// Get Slide Direction
 			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
-			if (bIsAwaitingSlideJump && GetCharacterMovement()->IsMovingOnGround())
+			if (bIsAwaitingSlideJump)
 			{
-				SlideDirection.Z = JumpForceWhileSliding;
+				if (CurrentSlideJumpDelay <= 0)
+				{
+					SlideDirection.Z = JumpForceWhileSliding;
+					CurrentSlideJumpDelay = SlideJumpDelay;
+				}
 			}
 			else
 			{
@@ -204,12 +247,14 @@ void APlayerCharacter::StartCrouch_Implementation()
 		else
 		{
 			bIsSliding = false;
+			CurrentSlideJumpDelay = 0;
 		}
 	}
 	else
 	{
 		bIsCrouching = false;
 		bIsSliding = false;
+		CurrentSlideJumpDelay = 0;
 	}
 
 	HandleCrouch();
@@ -219,6 +264,7 @@ void APlayerCharacter::EndCrouch_Implementation()
 {
 	bIsCrouching = false;
 	bIsSliding = false;
+	CurrentSlideJumpDelay = 0;
 	HandleCrouch();
 }
 
@@ -243,7 +289,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 	if (bIsSliding && bIsCrouched)
 	{
 		// Add Forward Force
-		LaunchCharacter(SlideDirection, true, false); // Works on server, not on client
+		LaunchCharacter(SlideDirection, true, false);
 
 		// Add Counterforce
 		CurrentSlideForce -= CounterSlideForce;
@@ -259,9 +305,76 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		// Unslide
 		bCanMove = true;
 		bUseControllerRotationYaw = true;
+		bIsAwaitingSlideJump = false;
 	}
 }
 
 #pragma endregion
 
+#pragma region Hitting
 
+void APlayerCharacter::ServerHit_Implementation()
+{
+	if (bCanHit)
+	{
+		HandleHit();
+	}
+}
+
+void APlayerCharacter::HandleHit_Implementation()
+{
+	// Hit Delay
+	FTimerHandle Timer;
+	GetWorld()->GetTimerManager().SetTimer(Timer, this, &APlayerCharacter::AllowHitting, HitDelay);
+	bCanHit = false;
+
+	// Line Trace
+	FVector StartLocation = Camera->GetComponentLocation();
+	FVector EndLocation = StartLocation + (Camera->GetComponentRotation().Vector() * HitDistance);
+
+	FHitResult HitResult;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	// The line trace
+	bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
+
+	// If hit
+	if (bIsHit)
+	{
+		APlayerCharacter* HitPlayer = Cast<APlayerCharacter>(HitResult.GetActor());
+		if (IsValid(HitPlayer))
+		{
+			// Get Direction
+			HitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+			// Launch
+			HitPlayer->LaunchCharacter(HitDirection * HitForce, true, false);
+		}
+	}
+
+	//DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::White, false, 1, 0, 1);
+
+}
+
+void APlayerCharacter::AllowHitting_Implementation()
+{
+	bCanHit = true;
+}
+
+#pragma endregion
+
+#pragma region Health
+
+void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
+{
+	CurrentHealth -= Health;
+
+	if (CurrentHealth <= 0)
+	{
+		// Die
+		Die();
+	}
+}
+
+#pragma endregion

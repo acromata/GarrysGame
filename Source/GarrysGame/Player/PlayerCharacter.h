@@ -33,7 +33,10 @@ protected:
 	class UInputAction* SprintAction;
 	
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
-	class UInputAction* SlideAction;
+	class UInputAction* CrouchAction;
+
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	class UInputAction* HitAction;
 
 public:
 	// Sets default values for this character's properties
@@ -60,6 +63,8 @@ protected:
 	void Look(const FInputActionValue& InputValue);
 	UFUNCTION(Server, Reliable)
 	void OnJump();
+	UFUNCTION(NetMulticast, Reliable)
+	void HandleJump();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Jump")
 	float JumpForceWhileSliding;
@@ -97,22 +102,55 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsSliding;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float SlideForce;
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
+	float CounterSlideForce;
 	UPROPERTY(Replicated)
 	float CurrentSlideForce;
-	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
-	float CounterSlideForce;
+
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsAwaitingSlideJump;
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
+	float SlideJumpDelay;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	float CurrentSlideJumpDelay;
+
+	// Hitting
+	UFUNCTION(Server, Reliable)
+	void ServerHit();
+	UFUNCTION(NetMulticast, Reliable)
+	void HandleHit();
+	UFUNCTION(Server, Reliable)
+	void AllowHitting();
+	UFUNCTION(BlueprintImplementableEvent)
+	void Die();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitDistance;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitDelay;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitForce;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FVector HitDirection;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bCanHit;
 
 	// Health
-	UPROPERTY(EditDefaultsOnly, Category = "Health")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	int32 MaxHealth;
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadWrite)
 	int32 CurrentHealth;
+
+public:
+
+	UFUNCTION(Server, Reliable)
+	void SubtractHealth(int32 Health);
 
 };
