@@ -127,6 +127,10 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
 	DOREPLIFETIME(APlayerCharacter, bCanHit);
 
+	// Items
+	DOREPLIFETIME(APlayerCharacter, ItemEquipped);
+
+
 }
 
 void APlayerCharacter::Move(const FInputActionValue& InputValue)
@@ -375,6 +379,23 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 		// Die
 		Die();
 	}
+}
+
+#pragma endregion
+
+#pragma region Item Equip
+
+void APlayerCharacter::SetEquippedItem_Implementation(UItemData* Item)
+{
+	if (IsValid(Item))
+	{
+		HandleSetEquippedItem(Item);
+	}
+}
+
+void APlayerCharacter::HandleSetEquippedItem_Implementation(UItemData* Item)
+{
+	ItemEquipped = Item;
 }
 
 #pragma endregion

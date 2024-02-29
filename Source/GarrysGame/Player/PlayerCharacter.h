@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
+#include "../DataAssets/ItemData.h"
 #include "PlayerCharacter.generated.h"
 
 UCLASS()
@@ -148,9 +149,18 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	int32 CurrentHealth;
 
+	// Items
+	UFUNCTION(NetMulticast, Reliable)
+	void HandleSetEquippedItem(UItemData* Item);
+
+	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
+	UItemData* ItemEquipped;
+
 public:
 
 	UFUNCTION(Server, Reliable)
 	void SubtractHealth(int32 Health);
 
+	UFUNCTION(Server, Reliable)
+	void SetEquippedItem(UItemData* Item);
 };
