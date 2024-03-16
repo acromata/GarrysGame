@@ -136,6 +136,8 @@ protected:
 	float HitDelay;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	float HitForce;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	USoundBase* HitSound;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector HitDirection;
@@ -156,11 +158,15 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
 	UItemData* ItemEquipped;
 
+	// Minigames
+	UPROPERTY(Replicated, BlueprintReadWrite)
+	bool bIsSafeFromStatue;
+
 public:
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SubtractHealth(int32 Health);
 
-	UFUNCTION(Server, Reliable)
+	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SetEquippedItem(UItemData* Item);
 };

@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -332,6 +333,9 @@ void APlayerCharacter::HandleHit_Implementation()
 	GetWorld()->GetTimerManager().SetTimer(Timer, this, &APlayerCharacter::AllowHitting, HitDelay);
 	bCanHit = false;
 
+	// Play sound
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), GetActorRotation());
+
 	// Line Trace
 	FVector StartLocation = Camera->GetComponentLocation();
 	FVector EndLocation = StartLocation + (Camera->GetComponentRotation().Vector() * HitDistance);
@@ -354,6 +358,7 @@ void APlayerCharacter::HandleHit_Implementation()
 
 			// Launch
 			HitPlayer->LaunchCharacter(HitDirection * HitForce, true, false);
+			HitPlayer->SubtractHealth(1);
 		}
 	}
 
