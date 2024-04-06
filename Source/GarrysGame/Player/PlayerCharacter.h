@@ -148,12 +148,16 @@ protected:
 	// Health
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	int32 MaxHealth;
-	UPROPERTY(Replicated, BlueprintReadWrite)
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
 	int32 CurrentHealth;
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
+	bool bIsDead;
+	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
+	bool bCanTakeDamage;
 
 	// Items
 	UFUNCTION(NetMulticast, Reliable)
-	void HandleSetEquippedItem(UItemData* Item);
+	void SetEquippedItem_Multicast(UItemData* Item);
 
 	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
 	UItemData* ItemEquipped;
@@ -169,4 +173,8 @@ public:
 
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SetEquippedItem(UItemData* Item);
+
+	UItemData* GetEquippedItem() const { return ItemEquipped; }
+
+	bool GetIsDead() const { return bIsDead; }
 };

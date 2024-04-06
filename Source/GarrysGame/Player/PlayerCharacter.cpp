@@ -45,6 +45,7 @@ APlayerCharacter::APlayerCharacter()
 
 	// Health
 	MaxHealth = 100.f;
+	bCanTakeDamage = true;
 }
 
 // Called when the game starts or when spawned
@@ -110,6 +111,8 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	// Health
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
+	DOREPLIFETIME(APlayerCharacter, bIsDead);
+	DOREPLIFETIME(APlayerCharacter, bCanTakeDamage);
 
 	// Running
 	DOREPLIFETIME(APlayerCharacter, bIsRunning);
@@ -130,6 +133,9 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	// Items
 	DOREPLIFETIME(APlayerCharacter, ItemEquipped);
+
+	// Minigames
+	DOREPLIFETIME(APlayerCharacter, bIsSafeFromStatue);
 
 
 }
@@ -179,7 +185,6 @@ void APlayerCharacter::OnJump_Implementation()
 void APlayerCharacter::HandleJump_Implementation()
 {
 	ACharacter::Jump();
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Hello");
 }
 
 #pragma region Sprint
@@ -377,8 +382,11 @@ void APlayerCharacter::AllowHitting_Implementation()
 
 void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 {
-	CurrentHealth -= Health;
-
+	if (bCanTakeDamage)
+	{
+		CurrentHealth -= Health;
+	}
+	
 	if (CurrentHealth <= 0)
 	{
 		// Die
@@ -392,15 +400,21 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 
 void APlayerCharacter::SetEquippedItem_Implementation(UItemData* Item)
 {
-	if (IsValid(Item))
-	{
-		HandleSetEquippedItem(Item);
-	}
+	SetEquippedItem_Multicast(Item);
 }
 
-void APlayerCharacter::HandleSetEquippedItem_Implementation(UItemData* Item)
+void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 {
-	ItemEquipped = Item;
+	if (IsValid(Item))
+	{
+		ItemEquipped = Item;
+	}
+	else
+	{
+		ItemEquipped = nullptr;
+	}
+	
 }
 
 #pragma endregion
+
