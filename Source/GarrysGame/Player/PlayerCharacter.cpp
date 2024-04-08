@@ -8,6 +8,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
+#include "Components/StaticMeshComponent.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -22,6 +23,10 @@ APlayerCharacter::APlayerCharacter()
 
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
+
+	// Item Mesh
+	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>("Item");
+	ItemMesh->SetupAttachment(GetMesh(), "ItemSocket");
 
 	// Movement
 	bCanMove = true;
@@ -102,6 +107,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndCrouch);
 
 		Input->BindAction(HitAction, ETriggerEvent::Completed, this, &APlayerCharacter::ServerHit);
+
+		Input->BindAction(HitAction, ETriggerEvent::Completed, this, &APlayerCharacter::Interact);
 	}
 }
 
@@ -408,6 +415,7 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 	if (IsValid(Item))
 	{
 		ItemEquipped = Item;
+		ItemMesh->SetStaticMesh(ItemEquipped->GetItemMesh());
 	}
 	else
 	{
@@ -418,3 +426,11 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 
 #pragma endregion
 
+#pragma region Interact
+
+void APlayerCharacter::Interact()
+{
+
+}
+
+#pragma endregion

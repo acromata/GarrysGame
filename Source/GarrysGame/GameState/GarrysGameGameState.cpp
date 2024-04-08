@@ -7,6 +7,7 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 	DOREPLIFETIME(AGarrysGameGameState, PlayerCount);
 	DOREPLIFETIME(AGarrysGameGameState, PlayersConnected);
+	DOREPLIFETIME(AGarrysGameGameState, LevelToOpen);
 }
 
 void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerController)
@@ -17,7 +18,21 @@ void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerContr
 		PlayersConnected.Add(Player);
 		PlayerCount++;
 
-		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
+		// Check if in lobby
+		FString CurrentLevelName = GetWorld()->GetMapName();
+		CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+		if (CurrentLevelName == LobbyMapName)
+		{
+			Player->SetEquippedItem(NuggetItem);
+			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, "Nuggeted");
+		}
+		else
+		{
+			//Player->SubtractHealth(420.f);
+			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, ("In Map: %s", GetWorld()->GetMapName()));
+		}
+
+		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
 	}
 }
 
@@ -42,24 +57,6 @@ void AGarrysGameGameState::OnPlayerDeath_Implementation()
 	}
 }
 
-void AGarrysGameGameState::ReturnToLobby_Implementation()
-{
-	GetWorld()->ServerTravel(LobbyMapName);
-}
-
-void AGarrysGameGameState::OpenLevel_Implementation()
-{
-	GetWorld()->ServerTravel(LevelToOpen);
-}
-
-FString AGarrysGameGameState::SetLevelToOpen(FString LevelName)
-{
-	LevelToOpen = LevelName;
-	OpenLevel();
-
-	return LevelToOpen;
-}
-
 int32 AGarrysGameGameState::GetNumOfAlivePlayers() const
 {
 	int32 AlivePlayerCount = PlayerCount;
@@ -73,4 +70,49 @@ int32 AGarrysGameGameState::GetNumOfAlivePlayers() const
 	}
 
 	return AlivePlayerCount;
+}
+
+void AGarrysGameGameState::ReturnToLobby_Implementation()
+{
+	SetLevelToOpen("Lobby");
+}
+
+void AGarrysGameGameState::SetLevelToOpen_Implementation(const FString& LevelName)
+{
+	LevelToOpen = LevelName;
+	OpenLevel();
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
+}
+
+void AGarrysGameGameState::OpenLevel()
+{
+	GetWorld()->ServerTravel(LevelToOpen);
+
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Server travel called"));
+}
+
+void AGarrysGameGameState::OnGameEnd_Implementation()
+{
+	if (GetNumOfAlivePlayers() < 1)
+	{
+		int32 RandNum = FMath::RandRange(0, LevelNames.Num() - 1);
+		if (LevelNames.IsValidIndex(RandNum))
+		{
+			SetLevelToOpen(LevelNames[RandNum]);
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level");
+			SetLevelToOpen("Lobby");
+		}
+	}
+	else if(GetNumOfAlivePlayers() == 1)
+	{
+		SetLevelToOpen("WinMapName");
+	}
+	else
+	{
+		SetLevelToOpen(LobbyMapName);
+	}
 }

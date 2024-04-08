@@ -15,6 +15,8 @@ class GARRYSGAME_API APlayerCharacter : public ACharacter
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* Camera;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
+	class UStaticMeshComponent* ItemMesh;
 
 protected:
 
@@ -38,6 +40,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
 	class UInputAction* HitAction;
+
+	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
+	class UInputAction* InteractAction;
 
 public:
 	// Sets default values for this character's properties
@@ -161,6 +166,9 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
 	UItemData* ItemEquipped;
+
+	// Interacting
+	void Interact();
 
 	// Minigames
 	UPROPERTY(Replicated, BlueprintReadWrite)

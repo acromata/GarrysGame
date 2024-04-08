@@ -35,14 +35,17 @@ void AMcNuggetBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* O
 			NuggetsInserted++;
 
 			AGarrysGameGameState* GameState = Cast<AGarrysGameGameState>(GetWorld()->GetGameState());
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, FString::Printf(TEXT("Player Count: %f Nugget Count: %f"), GameState->GetNumOfAlivePlayers(), NuggetsInserted));
 			if (NuggetsInserted == GameState->GetNumOfAlivePlayers())
 			{
-				int32 RandNum = FMath::RandRange(0, LevelNames.Num() - 1);
-				if (LevelNames.IsValidIndex(RandNum))
+				int32 RandNum = FMath::RandRange(0, GameState->GetLevelNames().Num() - 1);
+				if (GameState->GetLevelNames().IsValidIndex(RandNum))
 				{
-					GameState->SetLevelToOpen(LevelNames[RandNum]);
-					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Called to open level");
+					GameState->SetLevelToOpen(GameState->GetLevelNames()[RandNum]);
+				}
+				else
+				{
+					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level");
+					GameState->SetLevelToOpen("Lobby");
 				}
 				
 			}
