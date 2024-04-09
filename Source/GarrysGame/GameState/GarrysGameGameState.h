@@ -66,5 +66,8 @@ public:
 	int32 GetNumOfConnectedPlayers() const { return PlayerCount; }
 
 	UFUNCTION(BlueprintCallable)
+	TArray<APlayerCharacter*> GetPlayersConnected() const { return PlayersConnected;  }
+
+	UFUNCTION(BlueprintCallable)
 	TArray<FString> GetLevelNames() const { return LevelNames;  }
 };

@@ -73,6 +73,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	TickKnockback();
 }
 
 // Called to bind functionality to input
@@ -137,15 +138,19 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
 	DOREPLIFETIME(APlayerCharacter, bCanHit);
+	DOREPLIFETIME(APlayerCharacter, bWasHit);
 
 	// Items
 	DOREPLIFETIME(APlayerCharacter, ItemEquipped);
 
 	// Minigames
 	DOREPLIFETIME(APlayerCharacter, bIsSafeFromStatue);
+	DOREPLIFETIME(APlayerCharacter, PlayerScore);
 
 
 }
+
+#pragma region Movement
 
 void APlayerCharacter::Move(const FInputActionValue& InputValue)
 {
@@ -193,6 +198,8 @@ void APlayerCharacter::HandleJump_Implementation()
 {
 	ACharacter::Jump();
 }
+
+#pragma endregion
 
 #pragma region Sprint
 
@@ -346,7 +353,7 @@ void APlayerCharacter::HandleHit_Implementation()
 	bCanHit = false;
 
 	// Play sound
-	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), GetActorRotation());
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), GetActorRotation(), 1.5f);
 
 	// Line Trace
 	FVector StartLocation = Camera->GetComponentLocation();
@@ -366,11 +373,10 @@ void APlayerCharacter::HandleHit_Implementation()
 		if (IsValid(HitPlayer))
 		{
 			// Get Direction
-			HitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+			FVector NewHitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 
 			// Launch
-			HitPlayer->LaunchCharacter(HitDirection * HitForce, true, false);
-			HitPlayer->SubtractHealth(1);
+			HitPlayer->StartKnockback(NewHitDirection);
 		}
 	}
 
@@ -381,6 +387,28 @@ void APlayerCharacter::HandleHit_Implementation()
 void APlayerCharacter::AllowHitting_Implementation()
 {
 	bCanHit = true;
+}
+
+void APlayerCharacter::StartKnockback(FVector NewHitDirection)
+{
+	bWasHit = true;
+	HitDirection = NewHitDirection;
+
+	FTimerHandle EndKnockbackTimer;
+	GetWorld()->GetTimerManager().SetTimer(EndKnockbackTimer, this, &APlayerCharacter::EndKnockback, HitKnockbackTime);
+}
+
+void APlayerCharacter::TickKnockback()
+{
+	if (bWasHit == true)
+	{
+		LaunchCharacter(HitDirection * HitForce, true, false);
+	}
+}
+
+void APlayerCharacter::EndKnockback()
+{
+	bWasHit = false;
 }
 
 #pragma endregion
@@ -431,6 +459,15 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 void APlayerCharacter::Interact()
 {
 
+}
+
+#pragma endregion
+
+#pragma region Minigames
+
+void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
+{
+	PlayerScore = NewScore;
 }
 
 #pragma endregion

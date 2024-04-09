@@ -135,6 +135,9 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent)
 	void Die();
 
+	void TickKnockback();
+	void EndKnockback();
+
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	float HitDistance;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
@@ -142,13 +145,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	float HitForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitKnockbackTime;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	USoundBase* HitSound;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector HitDirection;
-
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bCanHit;
+
+	// For Knockback
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bWasHit;
 
 	// Health
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
@@ -174,6 +182,9 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bIsSafeFromStatue;
 
+	UPROPERTY(Replicated, BlueprintReadWrite)
+	float PlayerScore;
+
 public:
 
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -182,7 +193,16 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SetEquippedItem(UItemData* Item);
 
+	UFUNCTION(BlueprintCallable, Category = "Items")
 	UItemData* GetEquippedItem() const { return ItemEquipped; }
 
+	UFUNCTION(Server, Reliable, BlueprintCallable)
+	void SetPlayerScore(float NewScore);
+
+	UFUNCTION(BlueprintCallable, Category = "Minigames")
+	float GetPlayerScore() const { return PlayerScore; }
+
 	bool GetIsDead() const { return bIsDead; }
+
+	void StartKnockback(FVector NewHitDirection);
 };
