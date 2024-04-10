@@ -187,7 +187,7 @@ void APlayerCharacter::OnJump_Implementation()
 	if (bIsSliding)
 	{
 		bIsAwaitingSlideJump = true;
-	}
+	} 
 	else
 	{
 		HandleJump();
@@ -245,7 +245,8 @@ void APlayerCharacter::StartCrouch_Implementation()
 	{
 		bIsCrouching = true; 
 
-		if (bIsRunning && CurrentSlideForce > CrouchSpeed && (GetCharacterMovement()->IsMovingOnGround() || bIsSliding))
+		if ((bIsRunning || GetVelocity().Size() > WalkSpeed + 50.f) && CurrentSlideForce > CrouchSpeed && // Check if fast enough
+			(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
 		{
 			// Allow Sliding
 			bIsSliding = true;
@@ -376,7 +377,17 @@ void APlayerCharacter::HandleHit_Implementation()
 			FVector NewHitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
 
 			// Launch
-			HitPlayer->StartKnockback(NewHitDirection);
+			if (IsValid(GetEquippedItem()) && GetEquippedItem()->GetItemType() == EItemType::TagItem)
+			{
+				// If item is tag item, do extra knockback
+				HitPlayer->StartKnockback(NewHitDirection, HitForce * GetEquippedItem()->GetItemValue());
+				HitPlayer->SetEquippedItem(StickTagItem);
+				SetEquippedItem(nullptr);
+			}
+			else
+			{
+				HitPlayer->StartKnockback(NewHitDirection, HitForce);
+			}
 		}
 	}
 
@@ -389,10 +400,11 @@ void APlayerCharacter::AllowHitting_Implementation()
 	bCanHit = true;
 }
 
-void APlayerCharacter::StartKnockback(FVector NewHitDirection)
+void APlayerCharacter::StartKnockback(FVector NewHitDirection, float NewKnockbackForce)
 {
 	bWasHit = true;
 	HitDirection = NewHitDirection;
+	KnockbackForce = NewKnockbackForce;
 
 	FTimerHandle EndKnockbackTimer;
 	GetWorld()->GetTimerManager().SetTimer(EndKnockbackTimer, this, &APlayerCharacter::EndKnockback, HitKnockbackTime);
@@ -402,7 +414,7 @@ void APlayerCharacter::TickKnockback()
 {
 	if (bWasHit == true)
 	{
-		LaunchCharacter(HitDirection * HitForce, true, false);
+		LaunchCharacter(HitDirection * KnockbackForce, true, false);
 	}
 }
 
@@ -448,6 +460,7 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 	else
 	{
 		ItemEquipped = nullptr;
+		ItemMesh->SetStaticMesh(nullptr);
 	}
 	
 }

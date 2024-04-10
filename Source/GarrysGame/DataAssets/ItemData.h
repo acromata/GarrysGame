@@ -4,6 +4,15 @@
 #include "Engine/DataAsset.h"
 #include "ItemData.generated.h"
 
+
+UENUM(BlueprintType)
+enum EItemType
+{
+	RegularItem,
+	TagItem,
+	WeaponItem
+};
+
 UCLASS()
 class GARRYSGAME_API UItemData : public UDataAsset
 {
@@ -17,6 +26,8 @@ protected:
 	float ItemValue;
 	UPROPERTY(EditDefaultsOnly)
 	UStaticMesh* ItemMesh;
+	UPROPERTY(EditDefaultsOnly)
+	TEnumAsByte<EItemType> ItemType;
 
 public:
 
@@ -28,4 +39,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	UStaticMesh* GetItemMesh() const { return ItemMesh; }
+
+	UFUNCTION(BlueprintCallable)
+	TEnumAsByte<EItemType> GetItemType() const { return ItemType; }
+
 };

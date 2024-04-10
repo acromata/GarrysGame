@@ -158,6 +158,8 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bWasHit;
 
+	float KnockbackForce;
+
 	// Health
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	int32 MaxHealth;
@@ -185,6 +187,9 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	float PlayerScore;
 
+	UPROPERTY(EditDefaultsOnly, Category = "TagMinigame")
+	UItemData* StickTagItem;
+
 public:
 
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -204,5 +209,5 @@ public:
 
 	bool GetIsDead() const { return bIsDead; }
 
-	void StartKnockback(FVector NewHitDirection);
+	void StartKnockback(FVector NewHitDirection, float NewKnockbackForce);
 };
