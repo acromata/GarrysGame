@@ -4,6 +4,8 @@
 #include "GameFramework/GameStateBase.h"
 #include "../Player/PlayerCharacter.h"
 #include "../DataAssets/ItemData.h"
+#include "../DataAssets/LevelData.h"
+#include "../GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGameGameState.generated.h"
 
 UCLASS()
@@ -17,6 +19,8 @@ public:
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
 protected:
+
+	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnPlayerLogin(AController* PlayerController);
@@ -36,29 +40,43 @@ protected:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnGameEnd();
 
+
 	UPROPERTY(Replicated)
 	int32 PlayerCount;
 	UPROPERTY(Replicated)
 	TArray<APlayerCharacter*> PlayersConnected;
+	UPROPERTY(Replicated)
+	int32 NumOfPlayersReady;
+	UPROPERTY(Replicated)
+	TArray<APlayerCharacter*> PlayersReady;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Maps")
-	FString LobbyMapName;
+	ULevelData* LobbyLevelData;
 	UPROPERTY(EditDefaultsOnly, Category = "Maps")
-	FString WinMapName;
+	ULevelData* WinLevelData;
 	UPROPERTY(Replicated)
 	FString LevelToOpen;
-
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Maps")
-	TArray<FString> LevelNames;
+	TArray<ULevelData*> Levels;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Nugget")
 	UItemData* NuggetItem;
 
+	UGarrysGame_GameInstance* GameInstance;
+
 public:
 
+	// Levels
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void SetLevelToOpen(const FString& LevelName);
+	void SetLevelToOpen(ULevelData* LevelData);
 
+	UFUNCTION(BlueprintCallable)
+	TArray<ULevelData*> GetLevels() const { return Levels; }
+
+	UFUNCTION(BlueprintCallable)
+	ULevelData* GetLobbyData() const { return LobbyLevelData; }
+
+	// Players
 	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfAlivePlayers() const;
 
@@ -68,6 +86,14 @@ public:
 	UFUNCTION(BlueprintCallable)
 	TArray<APlayerCharacter*> GetPlayersConnected() const { return PlayersConnected;  }
 
+	// Playes Ready
 	UFUNCTION(BlueprintCallable)
-	TArray<FString> GetLevelNames() const { return LevelNames;  }
+	int32 GetNumOfPlayersReady() const { return NumOfPlayersReady; }
+
+	UFUNCTION(BlueprintCallable)
+	TArray<APlayerCharacter*> GetPlayersReady() const { return PlayersReady; }
+
+	UFUNCTION(BlueprintCallable)
+	void AddPlayerReady(APlayerCharacter* Player);
+
 };

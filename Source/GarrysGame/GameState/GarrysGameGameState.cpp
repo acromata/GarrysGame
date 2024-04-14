@@ -1,4 +1,5 @@
 #include "../GameState/GarrysGameGameState.h"
+#include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -7,12 +8,22 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 	DOREPLIFETIME(AGarrysGameGameState, PlayerCount);
 	DOREPLIFETIME(AGarrysGameGameState, PlayersConnected);
+	DOREPLIFETIME(AGarrysGameGameState, PlayersReady);
+	DOREPLIFETIME(AGarrysGameGameState, NumOfPlayersReady);
 	DOREPLIFETIME(AGarrysGameGameState, LevelToOpen);
+}
+
+void AGarrysGameGameState::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.0f);
 }
 
 void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerController)
 {
 	APlayerCharacter* Player = Cast<APlayerCharacter>(PlayerController->GetPawn());
+	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
 	if (IsValid(Player))
 	{
 		PlayersConnected.Add(Player);
@@ -21,9 +32,10 @@ void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerContr
 		// Check if in lobby
 		FString CurrentLevelName = GetWorld()->GetMapName();
 		CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
-		if (CurrentLevelName == LobbyMapName)
+		if (CurrentLevelName == LobbyLevelData->GetLevelName())
 		{
 			Player->SetEquippedItem(NuggetItem);
+			GameInstance->SetCurrentLevel(LobbyLevelData);
 			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, "Nuggeted");
 		}
 		else
@@ -72,15 +84,27 @@ int32 AGarrysGameGameState::GetNumOfAlivePlayers() const
 	return AlivePlayerCount;
 }
 
-void AGarrysGameGameState::ReturnToLobby_Implementation()
+void AGarrysGameGameState::AddPlayerReady(APlayerCharacter* Player)
 {
-	SetLevelToOpen("Lobby");
+	NumOfPlayersReady++;
+	PlayersReady.Add(Player);
+
+	if (NumOfPlayersReady >= PlayerCount)
+	{
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
+	}
 }
 
-void AGarrysGameGameState::SetLevelToOpen_Implementation(const FString& LevelName)
+void AGarrysGameGameState::ReturnToLobby_Implementation()
 {
-	LevelToOpen = LevelName;
+	SetLevelToOpen(LobbyLevelData);
+}
+
+void AGarrysGameGameState::SetLevelToOpen_Implementation(ULevelData* LevelData)
+{
+	LevelToOpen = LevelData->GetLevelName();
 	OpenLevel();
+	GameInstance->SetCurrentLevel(LevelData);
 
 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
 }
@@ -96,23 +120,25 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 {
 	if (GetNumOfAlivePlayers() < 1)
 	{
-		int32 RandNum = FMath::RandRange(0, LevelNames.Num() - 1);
-		if (LevelNames.IsValidIndex(RandNum))
+		int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
+		if (Levels.IsValidIndex(RandNum))
 		{
-			SetLevelToOpen(LevelNames[RandNum]);
+			SetLevelToOpen(Levels[RandNum]);
 		}
 		else
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level");
-			SetLevelToOpen("Lobby");
+
+			SetLevelToOpen(LobbyLevelData);
+			GameInstance->SetCurrentLevel(LobbyLevelData);
 		}
 	}
 	else if(GetNumOfAlivePlayers() == 1)
 	{
-		SetLevelToOpen("WinMapName");
+		SetLevelToOpen(WinLevelData);
 	}
 	else
 	{
-		SetLevelToOpen(LobbyMapName);
+		SetLevelToOpen(LobbyLevelData);
 	}
 }

@@ -2,6 +2,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "../Player/PlayerCharacter.h"
+#include "../DataAssets/LevelData.h"
 #include "../GameState/GarrysGameGameState.h"
 
 // Sets default values
@@ -37,15 +38,15 @@ void AMcNuggetBox::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* O
 			AGarrysGameGameState* GameState = Cast<AGarrysGameGameState>(GetWorld()->GetGameState());
 			if (NuggetsInserted == GameState->GetNumOfAlivePlayers())
 			{
-				int32 RandNum = FMath::RandRange(0, GameState->GetLevelNames().Num() - 1);
-				if (GameState->GetLevelNames().IsValidIndex(RandNum))
+				int32 RandNum = FMath::RandRange(0, GameState->GetLevels().Num() - 1);
+				if (GameState->GetLevels().IsValidIndex(RandNum))
 				{
-					GameState->SetLevelToOpen(GameState->GetLevelNames()[RandNum]);
+					GameState->SetLevelToOpen(GameState->GetLevels()[RandNum]);
 				}
 				else
 				{
 					GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level");
-					GameState->SetLevelToOpen("Lobby");
+					GameState->SetLevelToOpen(GameState->GetLobbyData());
 				}
 				
 			}
