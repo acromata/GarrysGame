@@ -356,6 +356,14 @@ void APlayerCharacter::HandleHit_Implementation()
 	// Play sound
 	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), GetActorRotation(), 1.5f);
 
+	// Animation
+	UAnimInstance* AnimationInstance = GetMesh()->GetAnimInstance();
+	if (IsValid(HitAnimation))
+	{
+		AnimationInstance->Montage_Play(HitAnimation);
+	}
+
+
 	// Line Trace
 	FVector StartLocation = Camera->GetComponentLocation();
 	FVector EndLocation = StartLocation + (Camera->GetComponentRotation().Vector() * HitDistance);

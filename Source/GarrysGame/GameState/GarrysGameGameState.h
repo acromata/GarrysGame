@@ -22,6 +22,7 @@ protected:
 
 	virtual void BeginPlay() override;
 
+	// Player
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnPlayerLogin(AController* PlayerController);
 
@@ -31,6 +32,10 @@ protected:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnPlayerDeath();
 
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void GiveRandomPlayerItem(UItemData* Item);
+
+	// Levels
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void ReturnToLobby();
 
@@ -95,5 +100,8 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void AddPlayerReady(APlayerCharacter* Player);
+
+	UFUNCTION(BlueprintCallable)
+	bool IsAllPlayersReady() const;
 
 };

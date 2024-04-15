@@ -148,6 +148,8 @@ protected:
 	float HitKnockbackTime;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	USoundBase* HitSound;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	UAnimMontage* HitAnimation;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector HitDirection;

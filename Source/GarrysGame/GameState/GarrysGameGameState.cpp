@@ -2,6 +2,13 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 
+void AGarrysGameGameState::BeginPlay()
+{
+	Super::BeginPlay();
+
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.0f);
+}
+
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -13,12 +20,7 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(AGarrysGameGameState, LevelToOpen);
 }
 
-void AGarrysGameGameState::BeginPlay()
-{
-	Super::BeginPlay();
-
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.0f);
-}
+#pragma region Players
 
 void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerController)
 {
@@ -36,12 +38,6 @@ void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerContr
 		{
 			Player->SetEquippedItem(NuggetItem);
 			GameInstance->SetCurrentLevel(LobbyLevelData);
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, "Nuggeted");
-		}
-		else
-		{
-			//Player->SubtractHealth(420.f);
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Red, ("In Map: %s", GetWorld()->GetMapName()));
 		}
 
 		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
@@ -56,7 +52,7 @@ void AGarrysGameGameState::OnPlayerLogout_Implementation(AController* PlayerCont
 		PlayersConnected.Remove(Player);
 		PlayerCount--;
 
-		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
+		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
 	}
 }
 
@@ -94,6 +90,22 @@ void AGarrysGameGameState::AddPlayerReady(APlayerCharacter* Player)
 		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
 	}
 }
+
+bool AGarrysGameGameState::IsAllPlayersReady() const
+{
+	if (NumOfPlayersReady >= GetNumOfAlivePlayers())
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+#pragma endregion
+
+#pragma region Levels
 
 void AGarrysGameGameState::ReturnToLobby_Implementation()
 {
@@ -140,5 +152,16 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 	else
 	{
 		SetLevelToOpen(LobbyLevelData);
+	}
+}
+
+#pragma endregion
+
+void AGarrysGameGameState::GiveRandomPlayerItem_Implementation(UItemData* Item)
+{
+	int32 RandNum = FMath::RandRange(0, PlayersReady.Num() - 1);
+	if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
+	{
+		PlayersReady[RandNum]->SetEquippedItem(Item);
 	}
 }
