@@ -9,6 +9,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/StaticMeshComponent.h"
+#include "../Interfaces/InteractableInterface.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -51,6 +52,9 @@ APlayerCharacter::APlayerCharacter()
 	// Health
 	MaxHealth = 100.f;
 	bCanTakeDamage = true;
+
+	// Interactable
+	InteractRange = 500.f;
 }
 
 // Called when the game starts or when spawned
@@ -107,9 +111,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		Input->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartCrouch);
 		Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndCrouch);
 
-		Input->BindAction(HitAction, ETriggerEvent::Completed, this, &APlayerCharacter::ServerHit);
+		Input->BindAction(HitAction, ETriggerEvent::Triggered, this, &APlayerCharacter::ServerHit);
 
-		Input->BindAction(HitAction, ETriggerEvent::Completed, this, &APlayerCharacter::Interact);
+		Input->BindAction(InteractAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Interact);
 	}
 }
 
@@ -479,7 +483,25 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 
 void APlayerCharacter::Interact()
 {
+	TArray<FHitResult> HitResult;
 
+	bool bHit = GetWorld()->SweepMultiByChannel(HitResult, GetActorLocation(), GetActorLocation(),
+		FQuat::Identity, ECC_WorldDynamic, FCollisionShape::MakeSphere(InteractRange));
+
+	//DrawDebugSphere(GetWorld(), GetActorLocation(), InteractRange, 20, FColor::Purple, true, 1.f);
+
+	if (bHit)
+	{
+		for (FHitResult Hit : HitResult)
+		{
+			IInteractableInterface* Interactable = Cast<IInteractableInterface>(Hit.GetActor());
+			if (Interactable)
+			{
+				Interactable->Interact(this);
+			}
+		}
+
+	}
 }
 
 #pragma endregion

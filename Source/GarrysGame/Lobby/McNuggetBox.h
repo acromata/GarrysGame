@@ -2,10 +2,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "../Interfaces/InteractableInterface.h"
 #include "McNuggetBox.generated.h"
 
 UCLASS()
-class GARRYSGAME_API AMcNuggetBox : public AActor
+class GARRYSGAME_API AMcNuggetBox : public AActor, public IInteractableInterface
 {
 	GENERATED_BODY()
 
@@ -23,11 +24,12 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-protected:
-
-	UFUNCTION()
-	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
-	
 	UPROPERTY(BlueprintReadOnly)
 	int32 NuggetsInserted;
+
+	bool bIsPlayerOverlapped;
+
+public:
+
+	virtual void Interact(APlayerCharacter* Player) override;
 };

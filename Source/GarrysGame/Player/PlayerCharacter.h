@@ -182,6 +182,9 @@ protected:
 	// Interacting
 	void Interact();
 
+	UPROPERTY(EditDefaultsOnly, Category = "Interacting")
+	float InteractRange;
+
 	// Minigames
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bIsSafeFromStatue;
