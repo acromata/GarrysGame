@@ -6,7 +6,8 @@ void AGarrysGameGameState::BeginPlay()
 {
 	Super::BeginPlay();
 
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.0f);
+	// Timer
+	CurrentTimerTime = PreGameTimerLength;
 }
 
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -18,6 +19,8 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(AGarrysGameGameState, PlayersReady);
 	DOREPLIFETIME(AGarrysGameGameState, NumOfPlayersReady);
 	DOREPLIFETIME(AGarrysGameGameState, LevelToOpen);
+	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerTime);
+	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerEnum);
 }
 
 #pragma region Players
@@ -38,6 +41,7 @@ void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerContr
 		{
 			Player->SetEquippedItem(NuggetItem);
 			GameInstance->SetCurrentLevel(LobbyLevelData);
+			Player->EnablePlayerInput();
 		}
 
 		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
@@ -84,23 +88,6 @@ void AGarrysGameGameState::AddPlayerReady(APlayerCharacter* Player)
 {
 	NumOfPlayersReady++;
 	PlayersReady.Add(Player);
-
-	if (NumOfPlayersReady >= PlayerCount)
-	{
-		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.0f);
-	}
-}
-
-bool AGarrysGameGameState::IsAllPlayersReady() const
-{
-	if (NumOfPlayersReady >= GetNumOfAlivePlayers())
-	{
-		return true;
-	}
-	else
-	{
-		return false;
-	}
 }
 
 #pragma endregion
@@ -153,6 +140,58 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 	{
 		SetLevelToOpen(LobbyLevelData);
 	}
+}
+
+#pragma endregion
+
+#pragma region Timer
+
+int32 AGarrysGameGameState::GetTimeFromTimerEnum()
+{
+	int32 MinigameTimeLength;
+	if (IsValid(GameInstance) && IsValid(GameInstance->GetCurrentLevel()) && IsValid(GameInstance->GetCurrentLevel()))
+	{
+		MinigameTimeLength = GameInstance->GetCurrentLevel()->GetMinigameData()->GetMinigameTime();
+	}
+	else
+	{
+		MinigameTimeLength = 3;
+	}
+
+	switch (CurrentTimerEnum)
+	{
+	case TimerPreGame:
+		return PreGameTimerLength;
+		break;
+	case TimerDuringGame:
+		return MinigameTimeLength;
+		break;
+	case TimerPostGame:
+		return PostGameTimerLength;
+		break;
+	default:
+		return 999;
+	}
+}
+
+TEnumAsByte<ETimerEnum> AGarrysGameGameState::MoveToNextTimerType()
+{
+	switch (CurrentTimerEnum)
+	{
+	case TimerPreGame:
+		CurrentTimerEnum = ETimerEnum::TimerDuringGame;
+		CurrentTimerTime = GetTimeFromTimerEnum();
+		break;
+	case TimerDuringGame:
+		CurrentTimerEnum = ETimerEnum::TimerPostGame;
+		CurrentTimerTime = GetTimeFromTimerEnum();
+		break;
+	default:
+		CurrentTimerEnum = ETimerEnum::TimerNull;
+		CurrentTimerTime = 999;
+	}
+
+	return CurrentTimerEnum;
 }
 
 #pragma endregion

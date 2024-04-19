@@ -8,6 +8,15 @@
 #include "../GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGameGameState.generated.h"
 
+UENUM(BlueprintType)
+enum ETimerEnum
+{
+	TimerPreGame,
+	TimerDuringGame,
+	TimerPostGame,
+	TimerNull
+};
+
 UCLASS()
 class GARRYSGAME_API AGarrysGameGameState : public AGameStateBase
 {
@@ -35,6 +44,20 @@ protected:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void GiveRandomPlayerItem(UItemData* Item);
 
+	// Timer
+	UFUNCTION(BlueprintCallable)
+	int32 GetTimeFromTimerEnum();
+
+	UPROPERTY(EditDefaultsOnly, Category = "Timer")
+	int32 PreGameTimerLength;
+	UPROPERTY(EditDefaultsOnly, Category = "Timer")
+	int32 PostGameTimerLength;
+
+	UPROPERTY(Replicated)
+	int32 CurrentTimerTime;
+	UPROPERTY(Replicated)
+	TEnumAsByte<ETimerEnum> CurrentTimerEnum;
+
 	// Levels
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void ReturnToLobby();
@@ -44,7 +67,6 @@ protected:
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnGameEnd();
-
 
 	UPROPERTY(Replicated)
 	int32 PlayerCount;
@@ -75,12 +97,6 @@ public:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void SetLevelToOpen(ULevelData* LevelData);
 
-	UFUNCTION(BlueprintCallable)
-	TArray<ULevelData*> GetLevels() const { return Levels; }
-
-	UFUNCTION(BlueprintCallable)
-	ULevelData* GetLobbyData() const { return LobbyLevelData; }
-
 	// Players
 	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfAlivePlayers() const;
@@ -102,6 +118,33 @@ public:
 	void AddPlayerReady(APlayerCharacter* Player);
 
 	UFUNCTION(BlueprintCallable)
-	bool IsAllPlayersReady() const;
+	bool IsAllPlayersReady() const { return NumOfPlayersReady >= GetNumOfAlivePlayers(); }
 
+public:
+
+	// Timer
+	UFUNCTION(BlueprintCallable)
+	int32 SubtractTime() { CurrentTimerTime--; return CurrentTimerTime; };
+
+	UFUNCTION(BlueprintCallable)
+	void SetTimerTime(int32 Time) { CurrentTimerTime = Time; }
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetTimerTime() const { return CurrentTimerTime; }
+
+	UFUNCTION(BlueprintCallable)
+	TEnumAsByte<ETimerEnum> GetTimerEnum() const { return CurrentTimerEnum; }
+
+	UFUNCTION(BlueprintCallable)
+	TEnumAsByte<ETimerEnum> MoveToNextTimerType();
+
+	UFUNCTION(BlueprintCallable)
+	void SetTimerType(TEnumAsByte<ETimerEnum> TimerType) { CurrentTimerEnum = TimerType; }
+
+	// Levels
+	UFUNCTION(BlueprintCallable)
+	ULevelData* GetLobbyData() const { return LobbyLevelData; }
+
+	UFUNCTION(BlueprintCallable)
+	TArray<ULevelData*> GetLevels() const { return Levels; }
 };

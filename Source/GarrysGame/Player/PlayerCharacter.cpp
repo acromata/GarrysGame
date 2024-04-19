@@ -30,7 +30,6 @@ APlayerCharacter::APlayerCharacter()
 	ItemMesh->SetupAttachment(GetMesh(), "ItemSocket");
 
 	// Movement
-	bCanMove = true;
 	JumpForceWhileSliding = 420.f;
 
 	// Speeds
@@ -61,6 +60,10 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	// Movement
+	bCanMove = true;
+	bAllowInput = false;
 
 	// Speeds
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
@@ -121,6 +124,9 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
+	// Movement
+	DOREPLIFETIME(APlayerCharacter, bAllowInput);
+
 	// Health
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
 	DOREPLIFETIME(APlayerCharacter, bIsDead);
@@ -160,7 +166,7 @@ void APlayerCharacter::Move(const FInputActionValue& InputValue)
 {
 	FVector2D InputVector = InputValue.Get<FVector2D>();
 
-	if (IsValid(Controller) && bCanMove)
+	if (IsValid(Controller) && bCanMove && bAllowInput)
 	{
 		// Get forward direction
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -188,13 +194,16 @@ void APlayerCharacter::Look(const FInputActionValue& InputValue)
 
 void APlayerCharacter::OnJump_Implementation()
 {
-	if (bIsSliding)
+	if (bAllowInput)
 	{
-		bIsAwaitingSlideJump = true;
-	} 
-	else
-	{
-		HandleJump();
+		if (bIsSliding)
+		{
+			bIsAwaitingSlideJump = true;
+		}
+		else
+		{
+			HandleJump();
+		}
 	}
 }
 
@@ -245,13 +254,19 @@ void APlayerCharacter::HandleSprint_Implementation()
 
 void APlayerCharacter::StartCrouch_Implementation()
 {
-	if (GetCharacterMovement()->CanCrouchInCurrentState())
+	if (GetCharacterMovement()->CanCrouchInCurrentState() && bAllowInput)
 	{
-		bIsCrouching = true; 
+		bIsCrouching = true;
 
 		if ((bIsRunning || GetVelocity().Size() > WalkSpeed + 50.f) && CurrentSlideForce > CrouchSpeed && // Check if fast enough
-			(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
+		(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
 		{
+			// Play Sound
+			if (!bIsSliding)
+			{
+				UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
+			}
+
 			// Allow Sliding
 			bIsSliding = true;
 
@@ -344,7 +359,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 
 void APlayerCharacter::ServerHit_Implementation()
 {
-	if (bCanHit)
+	if (bCanHit && bAllowInput)
 	{
 		HandleHit();
 	}

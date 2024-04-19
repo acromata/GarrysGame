@@ -18,6 +18,8 @@ protected:
 	FString MinigameName;
 	UPROPERTY(EditDefaultsOnly)
 	FString MinigameDescription;
+	UPROPERTY(EditDefaultsOnly)
+	int32 MinigameTime;
 
 public:
 
@@ -25,4 +27,6 @@ public:
 	FString GetMinigameName() const { return MinigameName; }
 	UFUNCTION(BlueprintCallable)
 	FString GetMinigameDescription() const { return MinigameDescription; }
+	UFUNCTION(BlueprintCallable)
+	int32 GetMinigameTime() const { return MinigameTime; }
 };

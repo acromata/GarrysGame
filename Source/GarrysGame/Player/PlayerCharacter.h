@@ -74,6 +74,8 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Jump")
 	float JumpForceWhileSliding;
+	UPROPERTY(Replicated)
+	bool bAllowInput;
 
 	bool bCanMove;
 
@@ -124,6 +126,9 @@ protected:
 	float SlideJumpDelay;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentSlideJumpDelay;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	USoundBase* SlideSound;
 
 	// Hitting
 	UFUNCTION(Server, Reliable)
@@ -215,4 +220,7 @@ public:
 	bool GetIsDead() const { return bIsDead; }
 
 	void StartKnockback(FVector NewHitDirection, float NewKnockbackForce);
+
+	UFUNCTION(BlueprintCallable)
+	void EnablePlayerInput() { bAllowInput = true; }
 };
