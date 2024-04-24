@@ -62,10 +62,9 @@ void AGarrysGameGameState::OnPlayerLogout_Implementation(AController* PlayerCont
 
 void AGarrysGameGameState::OnPlayerDeath_Implementation()
 {
-	if (GetNumOfAlivePlayers() <= 0)
+	if (GetNumOfAlivePlayers() <= 1)
 	{
-		FTimerHandle TimerHandle;
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AGarrysGameGameState::ReturnToLobby, 2.f);
+		OnGameEnd();
 	}
 }
 
@@ -101,11 +100,18 @@ void AGarrysGameGameState::ReturnToLobby_Implementation()
 
 void AGarrysGameGameState::SetLevelToOpen_Implementation(ULevelData* LevelData)
 {
-	LevelToOpen = LevelData->GetLevelName();
-	OpenLevel();
-	GameInstance->SetCurrentLevel(LevelData);
+	if (IsValid(LevelData))
+	{
+		LevelToOpen = LevelData->GetLevelName();
+		OpenLevel();
+		GameInstance->SetCurrentLevel(LevelData);
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Level Invalid"));
+	}
 }
 
 void AGarrysGameGameState::OpenLevel()
@@ -117,7 +123,7 @@ void AGarrysGameGameState::OpenLevel()
 
 void AGarrysGameGameState::OnGameEnd_Implementation()
 {
-	if (GetNumOfAlivePlayers() < 1)
+	if (GetNumOfAlivePlayers() > 1)
 	{
 		int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
 		if (Levels.IsValidIndex(RandNum))
@@ -149,7 +155,7 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 {
 	int32 MinigameTimeLength;
-	if (IsValid(GameInstance) && IsValid(GameInstance->GetCurrentLevel()) && IsValid(GameInstance->GetCurrentLevel()))
+	if (IsValid(GameInstance) && IsValid(GameInstance->GetCurrentLevel()) && IsValid(GameInstance->GetCurrentLevel()->GetMinigameData()))
 	{
 		MinigameTimeLength = GameInstance->GetCurrentLevel()->GetMinigameData()->GetMinigameTime();
 	}

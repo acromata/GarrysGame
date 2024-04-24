@@ -40,7 +40,6 @@ APlayerCharacter::APlayerCharacter()
 	// Slide
 	SlideForce = 1000.f;
 	CounterSlideForce = 1.f;
-	SlideJumpDelay = 10.f;
 
 	// Hitting
 	bCanHit = true;
@@ -143,7 +142,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, SlideDirection);
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
-	DOREPLIFETIME(APlayerCharacter, CurrentSlideJumpDelay);
+	DOREPLIFETIME(APlayerCharacter, bCanSlideJump);
 
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
@@ -196,7 +195,7 @@ void APlayerCharacter::OnJump_Implementation()
 {
 	if (bAllowInput)
 	{
-		if (bIsSliding)
+		if (bCanSlideJump)
 		{
 			bIsAwaitingSlideJump = true;
 		}
@@ -270,18 +269,33 @@ void APlayerCharacter::StartCrouch_Implementation()
 			// Allow Sliding
 			bIsSliding = true;
 
-			// Jump delay timer
-			CurrentSlideJumpDelay--;
+			// Check if grounded
+			FHitResult HitResult;
+			FCollisionQueryParams CollisionParams;
+			CollisionParams.AddIgnoredActor(this);
+
+			FVector StartLocation = GetMesh()->GetSocketLocation("GroundSocketTop");
+			FVector EndLocation = GetMesh()->GetSocketLocation("GroundSocketBottom");
+
+			// The line trace
+			bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, GetActorLocation(), EndLocation, ECC_Visibility, CollisionParams);
+
+			// If grounded, allow slide jump
+			if (bIsHit)
+			{
+				bCanSlideJump = true;
+			}
+			else
+			{
+				bCanSlideJump = false;
+			}
 
 			// Get Slide Direction
 			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
 			if (bIsAwaitingSlideJump)
 			{
-				if (CurrentSlideJumpDelay <= 0)
-				{
-					SlideDirection.Z = JumpForceWhileSliding;
-					CurrentSlideJumpDelay = SlideJumpDelay;
-				}
+				SlideDirection.Z = JumpForceWhileSliding;
+				
 			}
 			else
 			{
@@ -291,14 +305,13 @@ void APlayerCharacter::StartCrouch_Implementation()
 		else
 		{
 			bIsSliding = false;
-			CurrentSlideJumpDelay = 0;
 		}
 	}
 	else
 	{
 		bIsCrouching = false;
 		bIsSliding = false;
-		CurrentSlideJumpDelay = 0;
+		bCanSlideJump = false;
 	}
 
 	HandleCrouch();
@@ -308,7 +321,7 @@ void APlayerCharacter::EndCrouch_Implementation()
 {
 	bIsCrouching = false;
 	bIsSliding = false;
-	CurrentSlideJumpDelay = 0;
+	bCanSlideJump = false;
 	HandleCrouch();
 }
 
@@ -350,6 +363,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		bCanMove = true;
 		bUseControllerRotationYaw = true;
 		bIsAwaitingSlideJump = false;
+		bCanSlideJump = false;
 	}
 }
 

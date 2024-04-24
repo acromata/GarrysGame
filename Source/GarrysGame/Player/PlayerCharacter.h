@@ -122,10 +122,8 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsAwaitingSlideJump;
-	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
-	float SlideJumpDelay;
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	float CurrentSlideJumpDelay;
+	bool bCanSlideJump;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	USoundBase* SlideSound;
