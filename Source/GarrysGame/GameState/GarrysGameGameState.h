@@ -35,6 +35,8 @@ protected:
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnPlayerLogin(AController* PlayerController);
 
+	void PostPlayerLogin();
+
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnPlayerLogout(AController* PlayerController);
 
@@ -119,8 +121,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool IsAllPlayersReady() const { return NumOfPlayersReady >= GetNumOfAlivePlayers(); }
-
-public:
 
 	// Timer
 	UFUNCTION(BlueprintCallable)

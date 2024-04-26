@@ -42,9 +42,14 @@ void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerContr
 			Player->SetEquippedItem(NuggetItem);
 			GameInstance->SetCurrentLevel(LobbyLevelData);
 			Player->EnablePlayerInput();
-		}
 
-		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
+			GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, "Joined Lobby");
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, ("Joined %s", CurrentLevelName));
+		}
+		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Joined. Count: %f"), PlayerCount));
 	}
 }
 
@@ -56,7 +61,7 @@ void AGarrysGameGameState::OnPlayerLogout_Implementation(AController* PlayerCont
 		PlayersConnected.Remove(Player);
 		PlayerCount--;
 
-		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, FString::Printf(TEXT("Player Count: %f"), PlayerCount));
+		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Left. Count: %f"), PlayerCount));
 	}
 }
 

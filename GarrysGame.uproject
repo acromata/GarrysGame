@@ -27,14 +27,16 @@
 		},
 		{
 			"Name": "GameLiftPlugin",
-			"Enabled": true
+			"Enabled": false
 		},
 		{
 			"Name": "WebBrowserWidget",
-			"Enabled": true
+			"Enabled": false
 		}
 	],
 	"TargetPlatforms": [
-		"Windows"
+		"Windows",
+		"Linux",
+		"LinuxArm64"
 	]
 }

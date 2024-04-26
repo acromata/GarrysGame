@@ -10,6 +10,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/StaticMeshComponent.h"
 #include "../Interfaces/InteractableInterface.h"
+#include "../GameInstance/GarrysGame_GameInstance.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -71,7 +72,6 @@ void APlayerCharacter::BeginPlay()
 
 	// Health
 	CurrentHealth = MaxHealth;
-	
 }
 
 // Called every frame
@@ -395,7 +395,6 @@ void APlayerCharacter::HandleHit_Implementation()
 	{
 		AnimationInstance->Montage_Play(HitAnimation);
 	}
-
 
 	// Line Trace
 	FVector StartLocation = Camera->GetComponentLocation();

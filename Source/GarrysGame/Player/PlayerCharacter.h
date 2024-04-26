@@ -74,7 +74,7 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Jump")
 	float JumpForceWhileSliding;
-	UPROPERTY(Replicated)
+	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bAllowInput;
 
 	bool bCanMove;
@@ -198,27 +198,45 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "TagMinigame")
 	UItemData* StickTagItem;
 
+	// Player Name
+	UPROPERTY(Replicated)
+	FString PlayerName;
+
 public:
 
+	// Health
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SubtractHealth(int32 Health);
 
+	// Equipped Items
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SetEquippedItem(UItemData* Item);
 
 	UFUNCTION(BlueprintCallable, Category = "Items")
 	UItemData* GetEquippedItem() const { return ItemEquipped; }
 
+	// Player Score
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SetPlayerScore(float NewScore);
 
+	// Player Score
 	UFUNCTION(BlueprintCallable, Category = "Minigames")
 	float GetPlayerScore() const { return PlayerScore; }
 
+	// Check is dead
 	bool GetIsDead() const { return bIsDead; }
 
+	// Add Knockback
 	void StartKnockback(FVector NewHitDirection, float NewKnockbackForce);
 
+	// Input
 	UFUNCTION(BlueprintCallable)
 	void EnablePlayerInput() { bAllowInput = true; }
+
+	// Player Name
+	UFUNCTION(BlueprintCallable)
+	FString GetPlayerName() const { return PlayerName; }
+
+	UFUNCTION(BlueprintCallable)
+	void SetPlayerName(FString Name) { PlayerName = Name; }
 };
