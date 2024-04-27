@@ -11,6 +11,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "../Interfaces/InteractableInterface.h"
 #include "../GameInstance/GarrysGame_GameInstance.h"
+#include "GameFramework/PlayerState.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -61,6 +62,12 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// If server, destroy
+	//if (HasAuthority())
+	//{
+	//	Destroy();
+	//}
+
 	// Movement
 	bCanMove = true;
 	bAllowInput = false;
@@ -72,6 +79,14 @@ void APlayerCharacter::BeginPlay()
 
 	// Health
 	CurrentHealth = MaxHealth;
+
+	// Check if dead
+	APlayerState* ThomasNeedsToMakeMeAnOst = Cast<APlayerState>(GetPlayerState());
+	if (IsValid(ThomasNeedsToMakeMeAnOst) && ThomasNeedsToMakeMeAnOst->IsSpectator())
+	{
+		GetMesh()->Deactivate();
+		Die();
+	}
 }
 
 // Called every frame
@@ -156,6 +171,8 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, bIsSafeFromStatue);
 	DOREPLIFETIME(APlayerCharacter, PlayerScore);
 
+	// Name
+	DOREPLIFETIME(APlayerCharacter, PlayerName);
 
 }
 
@@ -478,6 +495,7 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 	{
 		// Die
 		Die();
+		GetPlayerState()->SetIsSpectator(true);
 	}
 }
 
