@@ -61,10 +61,10 @@ protected:
 	TEnumAsByte<ETimerEnum> CurrentTimerEnum;
 
 	// Levels
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable)
 	void ReturnToLobby();
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OpenLevel();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
@@ -85,7 +85,7 @@ protected:
 	ULevelData* WinLevelData;
 	UPROPERTY(Replicated)
 	FString LevelToOpen;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Maps")
+	UPROPERTY(EditDefaultsOnly, Replicated, Category = "Maps")
 	TArray<ULevelData*> Levels;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Nugget")
@@ -96,18 +96,21 @@ protected:
 public:
 
 	// Levels
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable)
 	void SetLevelToOpen(ULevelData* LevelData);
+
+	UFUNCTION(BlueprintCallable)
+	void OpenRandomLevel();
 
 	// Players
 	UFUNCTION(BlueprintCallable)
-	int32 GetNumOfAlivePlayers() const;
+	int32 GetNumOfAlivePlayers();
 
 	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfConnectedPlayers() const { return PlayerCount; }
 
 	UFUNCTION(BlueprintCallable)
-	TArray<APlayerCharacter*> GetPlayersConnected() const { return PlayersConnected;  }
+	TArray<APlayerCharacter*> GetPlayersConnected();
 
 	// Playes Ready
 	UFUNCTION(BlueprintCallable)
@@ -120,7 +123,7 @@ public:
 	void AddPlayerReady(APlayerCharacter* Player);
 
 	UFUNCTION(BlueprintCallable)
-	bool IsAllPlayersReady() const { return NumOfPlayersReady >= GetNumOfAlivePlayers(); }
+	bool IsAllPlayersReady() { return NumOfPlayersReady >= GetNumOfAlivePlayers(); }
 
 	// Timer
 	UFUNCTION(BlueprintCallable)

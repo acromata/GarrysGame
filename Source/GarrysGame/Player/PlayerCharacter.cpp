@@ -11,7 +11,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "../Interfaces/InteractableInterface.h"
 #include "../GameInstance/GarrysGame_GameInstance.h"
-#include "GameFramework/PlayerState.h"
+#include "../PlayerState/MainPlayerState.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -61,12 +61,6 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
-	// If server, destroy
-	//if (HasAuthority())
-	//{
-	//	Destroy();
-	//}
 
 	// Movement
 	bCanMove = true;
@@ -80,12 +74,25 @@ void APlayerCharacter::BeginPlay()
 	// Health
 	CurrentHealth = MaxHealth;
 
-	// Check if dead
-	APlayerState* ThomasNeedsToMakeMeAnOst = Cast<APlayerState>(GetPlayerState());
-	if (IsValid(ThomasNeedsToMakeMeAnOst) && ThomasNeedsToMakeMeAnOst->IsSpectator())
+	AMainPlayerState* MainPlayerState = Cast<AMainPlayerState>(GetPlayerState());
+	if (IsValid(MainPlayerState) && MainPlayerState->IsSpectator())
 	{
-		GetMesh()->Deactivate();
-		Die();
+		// Set Name
+		PlayerName = MainPlayerState->GetPlayerUsername();
+		
+		// If in minigame & dead, die.
+		FString CurrentLevelName = GetWorld()->GetMapName();
+		CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+		if (CurrentLevelName != "Lobby")
+		{
+			// Die
+			GetMesh()->Deactivate();
+			Die();
+		}
+		else
+		{
+			MainPlayerState->SetIsSpectator(false);
+		}
 	}
 }
 
@@ -529,16 +536,16 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 
 void APlayerCharacter::Interact()
 {
-	TArray<FHitResult> HitResult;
+	TArray<FHitResult> HitResults;
 
-	bool bHit = GetWorld()->SweepMultiByChannel(HitResult, GetActorLocation(), GetActorLocation(),
+	bool bHit = GetWorld()->SweepMultiByChannel(HitResults, GetActorLocation(), GetActorLocation(),
 		FQuat::Identity, ECC_WorldDynamic, FCollisionShape::MakeSphere(InteractRange));
 
 	//DrawDebugSphere(GetWorld(), GetActorLocation(), InteractRange, 20, FColor::Purple, true, 1.f);
 
 	if (bHit)
 	{
-		for (FHitResult Hit : HitResult)
+		for (FHitResult Hit : HitResults)
 		{
 			IInteractableInterface* Interactable = Cast<IInteractableInterface>(Hit.GetActor());
 			if (Interactable)

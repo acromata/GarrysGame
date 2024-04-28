@@ -21,13 +21,11 @@ public:
 	AMcNuggetBox();
 
 protected:
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
 
-	UPROPERTY(BlueprintReadOnly)
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 NuggetsInserted;
-
-	bool bIsPlayerOverlapped;
 
 public:
 

@@ -1,6 +1,7 @@
 #include "../GameState/GarrysGameGameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
+#include "Containers/Array.h"
 
 void AGarrysGameGameState::BeginPlay()
 {
@@ -8,6 +9,9 @@ void AGarrysGameGameState::BeginPlay()
 
 	// Timer
 	CurrentTimerTime = PreGameTimerLength;
+
+	// Game Instance
+	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
 }
 
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -28,7 +32,6 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerController)
 {
 	APlayerCharacter* Player = Cast<APlayerCharacter>(PlayerController->GetPawn());
-	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
 	if (IsValid(Player))
 	{
 		PlayersConnected.Add(Player);
@@ -62,6 +65,12 @@ void AGarrysGameGameState::OnPlayerLogout_Implementation(AController* PlayerCont
 		PlayerCount--;
 
 		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Left. Count: %f"), PlayerCount));
+
+		if (PlayerCount == 0)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, "Players gone, restarting lobby");
+			ReturnToLobby();
+		}
 	}
 }
 
@@ -73,8 +82,9 @@ void AGarrysGameGameState::OnPlayerDeath_Implementation()
 	}
 }
 
-int32 AGarrysGameGameState::GetNumOfAlivePlayers() const
+int32 AGarrysGameGameState::GetNumOfAlivePlayers()
 {
+	GetPlayersConnected(); // removes invalid players
 	int32 AlivePlayerCount = PlayerCount;
 	
 	for (APlayerCharacter* Player : PlayersConnected)
@@ -88,6 +98,20 @@ int32 AGarrysGameGameState::GetNumOfAlivePlayers() const
 	return AlivePlayerCount;
 }
 
+TArray<APlayerCharacter*> AGarrysGameGameState::GetPlayersConnected()
+{
+	for (APlayerCharacter* Player : PlayersConnected)
+	{
+		if (!IsValid(Player))
+		{
+			PlayersConnected.Remove(Player);
+			PlayerCount--;
+		}
+	}
+
+	return PlayersConnected;
+}
+
 void AGarrysGameGameState::AddPlayerReady(APlayerCharacter* Player)
 {
 	NumOfPlayersReady++;
@@ -98,20 +122,22 @@ void AGarrysGameGameState::AddPlayerReady(APlayerCharacter* Player)
 
 #pragma region Levels
 
-void AGarrysGameGameState::ReturnToLobby_Implementation()
+void AGarrysGameGameState::ReturnToLobby()
 {
 	SetLevelToOpen(LobbyLevelData);
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Returning to lobby"));
 }
 
-void AGarrysGameGameState::SetLevelToOpen_Implementation(ULevelData* LevelData)
+void AGarrysGameGameState::SetLevelToOpen(ULevelData* LevelData)
 {
 	if (IsValid(LevelData))
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
+
 		LevelToOpen = LevelData->GetLevelName();
 		OpenLevel();
 		GameInstance->SetCurrentLevel(LevelData);
 
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
 	}
 	else
 	{
@@ -119,11 +145,28 @@ void AGarrysGameGameState::SetLevelToOpen_Implementation(ULevelData* LevelData)
 	}
 }
 
-void AGarrysGameGameState::OpenLevel()
+void AGarrysGameGameState::OpenLevel_Implementation()
 {
 	GetWorld()->ServerTravel(LevelToOpen);
 
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Server travel called"));
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Open Level Called"));
+}
+
+void AGarrysGameGameState::OpenRandomLevel()
+{
+	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Called open random level function");
+
+	int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
+	if (IsValid(Levels[RandNum]) && Levels.IsValidIndex(RandNum))
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Called level to open");
+		SetLevelToOpen(Levels[RandNum]);
+	}
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level, Returning to lobby...");
+		SetLevelToOpen(GetLobbyData());
+	}
 }
 
 void AGarrysGameGameState::OnGameEnd_Implementation()
@@ -137,10 +180,10 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 		}
 		else
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level");
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level, attempting again");
 
-			SetLevelToOpen(LobbyLevelData);
-			GameInstance->SetCurrentLevel(LobbyLevelData);
+			OnGameEnd();
+			return;
 		}
 	}
 	else if(GetNumOfAlivePlayers() == 1)

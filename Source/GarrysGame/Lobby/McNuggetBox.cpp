@@ -4,6 +4,7 @@
 #include "../Player/PlayerCharacter.h"
 #include "../DataAssets/LevelData.h"
 #include "../GameState/GarrysGameGameState.h"
+#include "Net/UnrealNetwork.h"
 
 // Sets default values
 AMcNuggetBox::AMcNuggetBox()
@@ -16,35 +17,33 @@ AMcNuggetBox::AMcNuggetBox()
 	Collider->SetupAttachment(Mesh);
 }
 
-// Called when the game starts or when spawned
-void AMcNuggetBox::BeginPlay()
+
+void AMcNuggetBox::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::BeginPlay();
-	
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AMcNuggetBox, NuggetsInserted);
 }
 
 void AMcNuggetBox::Interact(APlayerCharacter* Player)
 {
 	if (IsValid(Player->GetEquippedItem()) && Player->GetEquippedItem()->GetItemName() == "Nugget")
 	{
+		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Added nugget");
+
 		Player->SetEquippedItem(nullptr);
 		NuggetsInserted++;
-
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Nugget Inserted"));
 
 		AGarrysGameGameState* GameState = Cast<AGarrysGameGameState>(GetWorld()->GetGameState());
 		if (NuggetsInserted == GameState->GetNumOfAlivePlayers())
 		{
-			int32 RandNum = FMath::RandRange(0, GameState->GetLevels().Num() - 1);
-			if (GameState->GetLevels().IsValidIndex(RandNum))
-			{
-				GameState->SetLevelToOpen(GameState->GetLevels()[RandNum]);
-			}
-			else
-			{
-				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level, Returning to lobby...");
-				GameState->SetLevelToOpen(GameState->GetLobbyData());
-			}
+			GameState->OpenRandomLevel();
+		}
+		else
+		{
+
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, FString::Printf(TEXT("Nugget Inserted. %f / %f"),
+				NuggetsInserted, GameState->GetNumOfAlivePlayers()));
 		}
 	}
 }
