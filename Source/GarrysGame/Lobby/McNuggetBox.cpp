@@ -35,15 +35,16 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 		NuggetsInserted++;
 
 		AGarrysGameGameState* GameState = Cast<AGarrysGameGameState>(GetWorld()->GetGameState());
-		if (NuggetsInserted == GameState->GetNumOfAlivePlayers())
+		if (IsValid(GameState))
 		{
-			GameState->OpenRandomLevel();
-		}
-		else
-		{
-
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, FString::Printf(TEXT("Nugget Inserted. %f / %f"),
-				NuggetsInserted, GameState->GetNumOfAlivePlayers()));
+			if (NuggetsInserted == GameState->GetNumOfAlivePlayers())
+			{
+				GameState->OpenRandomLevel();
+			}
+			else
+			{
+				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Nugget Inserted"));
+			}
 		}
 	}
 }

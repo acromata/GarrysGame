@@ -12,6 +12,9 @@ void AGarrysGameGameState::BeginPlay()
 
 	// Game Instance
 	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
+
+	// Game Mode
+	MainGameMode = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
 }
 
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -29,7 +32,7 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 #pragma region Players
 
-void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerController)
+void AGarrysGameGameState::OnPlayerLogin(AController* PlayerController)
 {
 	APlayerCharacter* Player = Cast<APlayerCharacter>(PlayerController->GetPawn());
 	if (IsValid(Player))
@@ -52,11 +55,12 @@ void AGarrysGameGameState::OnPlayerLogin_Implementation(AController* PlayerContr
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Red, ("Joined %s", CurrentLevelName));
 		}
-		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Joined. Count: %f"), PlayerCount));
+		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Joined. Count: %f"), PlayerCount));
+		UE_LOG(LogTemp, Warning, TEXT("Player Joined. Count: %f"), PlayerCount);
 	}
 }
 
-void AGarrysGameGameState::OnPlayerLogout_Implementation(AController* PlayerController)
+void AGarrysGameGameState::OnPlayerLogout(AController* PlayerController)
 {
 	APlayerCharacter* Player = Cast<APlayerCharacter>(PlayerController->GetPawn());
 	if (IsValid(Player))
@@ -64,11 +68,12 @@ void AGarrysGameGameState::OnPlayerLogout_Implementation(AController* PlayerCont
 		PlayersConnected.Remove(Player);
 		PlayerCount--;
 
-		GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Left. Count: %f"), PlayerCount));
+		//GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, FString::Printf(TEXT("Player Left. Count: %f"), PlayerCount));
+		UE_LOG(LogTemp, Warning, TEXT("Player Left. Count: %f"), PlayerCount);
 
 		if (PlayerCount == 0)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 0.5, FColor::Green, "Players gone, restarting lobby");
+			UE_LOG(LogTemp, Warning, TEXT("Players gone, Restarting lobby"));
 			ReturnToLobby();
 		}
 	}
@@ -125,49 +130,57 @@ void AGarrysGameGameState::AddPlayerReady(APlayerCharacter* Player)
 void AGarrysGameGameState::ReturnToLobby()
 {
 	SetLevelToOpen(LobbyLevelData);
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Returning to lobby"));
+	UE_LOG(LogTemp, Warning, TEXT("Returning to lobby"));
+}
+
+void AGarrysGameGameState::OpenRandomLevel()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Called open random level function"));
+
+	int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
+	if (IsValid(Levels[RandNum]) && Levels.IsValidIndex(RandNum))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Called level to open"));
+		SetLevelToOpen(Levels[RandNum]);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Invalid level, Returning to lobby..."));
+		SetLevelToOpen(GetLobbyData());
+	}
 }
 
 void AGarrysGameGameState::SetLevelToOpen(ULevelData* LevelData)
 {
 	if (IsValid(LevelData))
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Opening level %s", LevelToOpen));
+		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
 
 		LevelToOpen = LevelData->GetLevelName();
-		OpenLevel();
+		OpenNewLevel();
 		GameInstance->SetCurrentLevel(LevelData);
-
 	}
 	else
 	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Level Invalid"));
+		UE_LOG(LogTemp, Warning, TEXT("Level Invalid"));
 	}
 }
 
-void AGarrysGameGameState::OpenLevel_Implementation()
-{
-	GetWorld()->ServerTravel(LevelToOpen);
-
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Open Level Called"));
-}
-
-void AGarrysGameGameState::OpenRandomLevel()
-{
-	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Called open random level function");
-
-	int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
-	if (IsValid(Levels[RandNum]) && Levels.IsValidIndex(RandNum))
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Called level to open");
-		SetLevelToOpen(Levels[RandNum]);
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level, Returning to lobby...");
-		SetLevelToOpen(GetLobbyData());
-	}
-}
+//void AGarrysGameGameState::Server_SetLevelToOpen_Implementation(ULevelData* LevelData)
+//{
+//	if (IsValid(LevelData))
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
+//
+//		LevelToOpen = LevelData->GetLevelName();
+//		OpenLevel();
+//		GameInstance->SetCurrentLevel(LevelData);
+//	}
+//	else
+//	{
+//		UE_LOG(LogTemp, Warning, TEXT("Level Invalid"));
+//	}
+//}
 
 void AGarrysGameGameState::OnGameEnd_Implementation()
 {
@@ -180,13 +193,12 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 		}
 		else
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Invalid level, attempting again");
-
+			UE_LOG(LogTemp, Warning, TEXT("Invalid level, attempting again"));
 			OnGameEnd();
 			return;
 		}
 	}
-	else if(GetNumOfAlivePlayers() == 1)
+	else if (GetNumOfAlivePlayers() == 1)
 	{
 		SetLevelToOpen(WinLevelData);
 	}

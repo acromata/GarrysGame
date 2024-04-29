@@ -74,26 +74,10 @@ void APlayerCharacter::BeginPlay()
 	// Health
 	CurrentHealth = MaxHealth;
 
-	AMainPlayerState* MainPlayerState = Cast<AMainPlayerState>(GetPlayerState());
-	if (IsValid(MainPlayerState) && MainPlayerState->IsSpectator())
-	{
-		// Set Name
-		PlayerName = MainPlayerState->GetPlayerUsername();
-		
-		// If in minigame & dead, die.
-		FString CurrentLevelName = GetWorld()->GetMapName();
-		CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
-		if (CurrentLevelName != "Lobby")
-		{
-			// Die
-			GetMesh()->Deactivate();
-			Die();
-		}
-		else
-		{
-			MainPlayerState->SetIsSpectator(false);
-		}
-	}
+	// Call Player State after delay
+	FTimerHandle StateTimer;
+	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, .5f);
+	
 }
 
 // Called every frame
@@ -551,6 +535,7 @@ void APlayerCharacter::Interact()
 			if (Interactable)
 			{
 				Interactable->Interact(this);
+				break;
 			}
 		}
 
@@ -564,6 +549,39 @@ void APlayerCharacter::Interact()
 void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
 {
 	PlayerScore = NewScore;
+}
+
+#pragma endregion
+
+
+#pragma region Player State
+
+
+void APlayerCharacter::CheckPlayerState()
+{
+	AMainPlayerState* MainPlayerState = Cast<AMainPlayerState>(GetPlayerState());
+	if (IsValid(MainPlayerState))
+	{
+		// Set Name
+		PlayerName = MainPlayerState->GetPlayerUsername();
+
+		if (MainPlayerState->IsSpectator())
+		{
+			// If in minigame & dead, spawn as spectator.
+			FString CurrentLevelName = GetWorld()->GetMapName();
+			CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
+			if (CurrentLevelName != "Lobby")
+			{
+				// Die
+				GetMesh()->Deactivate();
+				Die();
+			}
+			else
+			{
+				MainPlayerState->SetIsSpectator(false);
+			}
+		}
+	}
 }
 
 #pragma endregion

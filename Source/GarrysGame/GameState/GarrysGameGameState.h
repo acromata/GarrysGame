@@ -6,6 +6,7 @@
 #include "../DataAssets/ItemData.h"
 #include "../DataAssets/LevelData.h"
 #include "../GameInstance/GarrysGame_GameInstance.h"
+#include "../GameMode/MainGameMode.h"
 #include "GarrysGameGameState.generated.h"
 
 UENUM(BlueprintType)
@@ -33,18 +34,13 @@ protected:
 
 	// Player
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void OnPlayerLogin(AController* PlayerController);
-
-	void PostPlayerLogin();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void OnPlayerLogout(AController* PlayerController);
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnPlayerDeath();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void GiveRandomPlayerItem(UItemData* Item);
+
+	//UFUNCTION(Server, Reliable)
+	//void Server_SetLevelToOpen(ULevelData* LevelData);
 
 	// Timer
 	UFUNCTION(BlueprintCallable)
@@ -65,9 +61,6 @@ protected:
 	void ReturnToLobby();
 
 	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void OpenLevel();
-
-	UFUNCTION(BlueprintCallable, Server, Reliable)
 	void OnGameEnd();
 
 	UPROPERTY(Replicated)
@@ -85,12 +78,13 @@ protected:
 	ULevelData* WinLevelData;
 	UPROPERTY(Replicated)
 	FString LevelToOpen;
-	UPROPERTY(EditDefaultsOnly, Replicated, Category = "Maps")
+	UPROPERTY(EditDefaultsOnly, Category = "Maps")
 	TArray<ULevelData*> Levels;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Nugget")
 	UItemData* NuggetItem;
 
+	AMainGameMode* MainGameMode;
 	UGarrysGame_GameInstance* GameInstance;
 
 public:
@@ -103,6 +97,13 @@ public:
 	void OpenRandomLevel();
 
 	// Players
+	UFUNCTION(BlueprintCallable)
+	void OnPlayerLogin(AController* PlayerController);
+
+	UFUNCTION(BlueprintCallable)
+	void OnPlayerLogout(AController* PlayerController);
+
+
 	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfAlivePlayers();
 

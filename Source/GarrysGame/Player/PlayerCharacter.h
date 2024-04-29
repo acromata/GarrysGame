@@ -198,7 +198,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "TagMinigame")
 	UItemData* StickTagItem;
 
-	// Player Name
+	// Player Status
+	void CheckPlayerState();
+
 	UPROPERTY(Replicated)
 	FString PlayerName;
 
