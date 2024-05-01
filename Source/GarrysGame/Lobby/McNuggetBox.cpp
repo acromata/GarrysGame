@@ -15,6 +15,8 @@ AMcNuggetBox::AMcNuggetBox()
 
 	Collider = CreateDefaultSubobject<USphereComponent>("Collider");
 	Collider->SetupAttachment(Mesh);
+
+	bReplicates = true;
 }
 
 
@@ -34,12 +36,12 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 		Player->SetEquippedItem(nullptr);
 		NuggetsInserted++;
 
-		AGarrysGameGameState* GameState = Cast<AGarrysGameGameState>(GetWorld()->GetGameState());
-		if (IsValid(GameState))
+		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+		if (IsValid(MainGameMode))
 		{
-			if (NuggetsInserted == GameState->GetNumOfAlivePlayers())
+			if (NuggetsInserted == MainGameMode->GetNumOfAlivePlayers())
 			{
-				GameState->OpenRandomLevel();
+				MainGameMode->OpenRandomLevel();
 			}
 			else
 			{

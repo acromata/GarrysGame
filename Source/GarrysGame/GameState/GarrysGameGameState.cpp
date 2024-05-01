@@ -13,24 +13,23 @@ void AGarrysGameGameState::BeginPlay()
 	// Game Instance
 	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
 
-	// Game Mode
-	MainGameMode = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
+	MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 }
 
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME(AGarrysGameGameState, PlayerCount);
-	DOREPLIFETIME(AGarrysGameGameState, PlayersConnected);
-	DOREPLIFETIME(AGarrysGameGameState, PlayersReady);
-	DOREPLIFETIME(AGarrysGameGameState, NumOfPlayersReady);
-	DOREPLIFETIME(AGarrysGameGameState, LevelToOpen);
+	//DOREPLIFETIME(AGarrysGameGameState, PlayerCount);
+	//DOREPLIFETIME(AGarrysGameGameState, PlayersConnected);
+	//DOREPLIFETIME(AGarrysGameGameState, PlayersReady);
+	//DOREPLIFETIME(AGarrysGameGameState, NumOfPlayersReady);
+	//DOREPLIFETIME(AGarrysGameGameState, LevelToOpen);
 	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerTime);
 	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerEnum);
 }
 
-#pragma region Players
+/*#pragma region Players
 
 void AGarrysGameGameState::OnPlayerLogin(AController* PlayerController)
 {
@@ -152,35 +151,20 @@ void AGarrysGameGameState::OpenRandomLevel()
 
 void AGarrysGameGameState::SetLevelToOpen(ULevelData* LevelData)
 {
-	if (IsValid(LevelData))
+	MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+	if (IsValid(LevelData) && IsValid(MainGameMode))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
 
 		LevelToOpen = LevelData->GetLevelName();
-		OpenNewLevel();
+		MainGameMode->OpenNewLevel(LevelToOpen);
 		GameInstance->SetCurrentLevel(LevelData);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Level Invalid"));
+		UE_LOG(LogTemp, Warning, TEXT("Level or Game Mode Invalid"));
 	}
 }
-
-//void AGarrysGameGameState::Server_SetLevelToOpen_Implementation(ULevelData* LevelData)
-//{
-//	if (IsValid(LevelData))
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
-//
-//		LevelToOpen = LevelData->GetLevelName();
-//		OpenLevel();
-//		GameInstance->SetCurrentLevel(LevelData);
-//	}
-//	else
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("Level Invalid"));
-//	}
-//}
 
 void AGarrysGameGameState::OnGameEnd_Implementation()
 {
@@ -208,7 +192,7 @@ void AGarrysGameGameState::OnGameEnd_Implementation()
 	}
 }
 
-#pragma endregion
+#pragma endregion*/
 
 #pragma region Timer
 
@@ -261,12 +245,3 @@ TEnumAsByte<ETimerEnum> AGarrysGameGameState::MoveToNextTimerType()
 }
 
 #pragma endregion
-
-void AGarrysGameGameState::GiveRandomPlayerItem_Implementation(UItemData* Item)
-{
-	int32 RandNum = FMath::RandRange(0, PlayersReady.Num() - 1);
-	if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
-	{
-		PlayersReady[RandNum]->SetEquippedItem(Item);
-	}
-}

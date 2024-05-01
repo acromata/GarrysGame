@@ -5,9 +5,7 @@
 #include "../DataAssets/LevelData.h"
 #include "GarrysGame_GameInstance.generated.h"
 
-/**
- * 
- */
+
 UCLASS()
 class GARRYSGAME_API UGarrysGame_GameInstance : public UGameInstance
 {
@@ -19,6 +17,7 @@ protected:
 
 public:
 
+	UFUNCTION(BlueprintCallable)
 	void SetCurrentLevel(ULevelData* Level) { CurrentLevelData = Level; }
 
 	UFUNCTION(BlueprintCallable)
