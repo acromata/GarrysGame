@@ -518,7 +518,7 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 
 #pragma region Interact
 
-void APlayerCharacter::Interact()
+void APlayerCharacter::Interact_Implementation()
 {
 	TArray<FHitResult> HitResults;
 

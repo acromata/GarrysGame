@@ -22,9 +22,13 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void OnGameEnd();
 
+	UPROPERTY(BlueprintReadWrite)
 	int32 NumOfConnectedPlayers;
+	UPROPERTY(BlueprintReadWrite)
 	TArray<APlayerCharacter*> ConnectedPlayers;
+	UPROPERTY(BlueprintReadWrite)
 	int32 NumOfPlayersReady;
+	UPROPERTY(BlueprintReadWrite)
 	TArray<APlayerCharacter*> PlayersReady;
 
 	// Level
@@ -38,6 +42,7 @@ protected:
 	FString LevelToOpen;
 
 	// Game instance
+	UPROPERTY(BlueprintReadWrite)
 	UGarrysGame_GameInstance* GameInstance;
 
 public:

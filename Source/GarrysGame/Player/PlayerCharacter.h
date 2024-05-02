@@ -72,8 +72,6 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void HandleJump();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Movement|Jump")
-	float JumpForceWhileSliding;
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bAllowInput;
 
@@ -116,6 +114,8 @@ protected:
 	float CounterSlideForce;
 	UPROPERTY(Replicated)
 	float CurrentSlideForce;
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
+	float JumpForceWhileSliding;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
@@ -183,6 +183,7 @@ protected:
 	UItemData* ItemEquipped;
 
 	// Interacting
+	UFUNCTION(Server, Reliable)
 	void Interact();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Interacting")

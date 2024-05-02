@@ -48,6 +48,10 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Nugget Inserted"));
 			}
 		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Invalid"));
+		}
 	}
 }
 
