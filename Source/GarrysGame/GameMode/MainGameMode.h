@@ -2,8 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "../DataAssets/LevelData.h"
-#include "../Player/PlayerCharacter.h"
 #include "../GameInstance/GarrysGame_GameInstance.h"
 #include "MainGameMode.generated.h"
 
@@ -15,6 +13,8 @@ class GARRYSGAME_API AMainGameMode : public AGameModeBase
 
 
 protected:
+
+	virtual void BeginPlay() override;
 
 	// Player
 	UFUNCTION(BlueprintCallable)
@@ -32,18 +32,23 @@ protected:
 	TArray<APlayerCharacter*> PlayersReady;
 
 	// Level
-	UPROPERTY(EditDefaultsOnly, Category = "Maps")
-	ULevelData* LobbyLevelData;
-	UPROPERTY(EditDefaultsOnly, Category = "Maps")
-	ULevelData* WinLevelData;
-	UPROPERTY(EditDefaultsOnly, Category = "Maps")
-	TArray<ULevelData*> Levels;
-	UPROPERTY(BlueprintReadOnly)
 	FString LevelToOpen;
 
 	// Game instance
 	UPROPERTY(BlueprintReadWrite)
 	UGarrysGame_GameInstance* GameInstance;
+
+	// Game State
+	UPROPERTY(BlueprintReadWrite)
+	class AGarrysGameGameState* MainGameState;
+
+	// Heartbeats
+	void CheckForMissedHeartbeats();
+
+	TMap<APlayerCharacter*, int32> MissedHeartbeatsMap;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Heartbeat")
+	FName HeartbeatDisconnectMapName;
 
 public:
 
@@ -57,11 +62,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void OpenRandomLevel();
 
-	UFUNCTION(BlueprintCallable)
-	ULevelData* GetLobbyData() const { return LobbyLevelData; }
-
-	UFUNCTION(BlueprintCallable)
-	TArray<ULevelData*> GetLevels() const { return Levels; }
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void CheckIfInLobby(APlayerCharacter* Player);
 
 	// Players
 	UFUNCTION(BlueprintCallable)
@@ -91,4 +93,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void GiveRandomPlayerItem(UItemData* Item);
+
+	// Heartbeat
+	void ReceiveHeartbeat(APlayerCharacter* Player);
 };

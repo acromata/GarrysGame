@@ -26,12 +26,8 @@
 			"Enabled": true
 		},
 		{
-			"Name": "GameLiftPlugin",
-			"Enabled": false
-		},
-		{
-			"Name": "WebBrowserWidget",
-			"Enabled": false
+			"Name": "GPULightmass",
+			"Enabled": true
 		}
 	],
 	"TargetPlatforms": [

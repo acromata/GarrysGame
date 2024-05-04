@@ -135,8 +135,6 @@ protected:
 	void HandleHit();
 	UFUNCTION(Server, Reliable)
 	void AllowHitting();
-	UFUNCTION(BlueprintImplementableEvent)
-	void Die();
 
 	void TickKnockback();
 	void EndKnockback();
@@ -166,6 +164,9 @@ protected:
 	float KnockbackForce;
 
 	// Health
+	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	void Die();
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	int32 MaxHealth;
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
@@ -205,6 +206,12 @@ protected:
 	UPROPERTY(Replicated)
 	FString PlayerName;
 
+	// Heartbeat
+	UFUNCTION(Server, Reliable)
+	void SendHeartbeatToServer();
+
+	int32 NumOfMissedHeartbeats;
+
 public:
 
 	// Health
@@ -242,4 +249,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void SetPlayerName(FString Name) { PlayerName = Name; }
+
+	// Heartbeats
+	int32 GetNumOfMissedHeartbeats() const { return NumOfMissedHeartbeats;  }
 };

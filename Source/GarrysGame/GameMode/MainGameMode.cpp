@@ -1,5 +1,19 @@
 #include "../GameMode/MainGameMode.h"
 #include "../GameState/GarrysGameGameState.h"
+#include "../DataAssets/LevelData.h"
+#include "../Player/PlayerCharacter.h"
+#include "Kismet/GameplayStatics.h"
+
+
+void AMainGameMode::BeginPlay()
+{
+	MainGameState = Cast<AGarrysGameGameState>(GameState);
+	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
+
+	// Check for heartbeats
+	FTimerHandle HeartbeatTimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &AMainGameMode::CheckForMissedHeartbeats, 15.f, true);
+}
 
 void AMainGameMode::SetLevelToOpen(ULevelData* LevelData)
 {
@@ -17,22 +31,22 @@ void AMainGameMode::OpenRandomLevel()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Called open random level function"));
 
-	int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
-	if (IsValid(Levels[RandNum]) && Levels.IsValidIndex(RandNum))
+	int32 RandNum = FMath::RandRange(0, (MainGameState->GetLevels().Num() - 1));
+	if (IsValid(MainGameState->GetLevels()[RandNum]) && MainGameState->GetLevels().IsValidIndex(RandNum))
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Called level to open"));
-		SetLevelToOpen(Levels[RandNum]);
+		SetLevelToOpen(MainGameState->GetLevels()[RandNum]);
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Invalid level, Returning to lobby..."));
-		SetLevelToOpen(GetLobbyData());
+		SetLevelToOpen(MainGameState->GetLobbyData());
 	}
 }
 
 void AMainGameMode::ReturnToLobby()
 {
-	SetLevelToOpen(LobbyLevelData);
+	SetLevelToOpen(MainGameState->GetLobbyData());
 	UE_LOG(LogTemp, Warning, TEXT("Returning to lobby"));
 }
 
@@ -40,10 +54,11 @@ void AMainGameMode::OnGameEnd()
 {
 	if (GetNumOfAlivePlayers() > 1)
 	{
-		int32 RandNum = FMath::RandRange(0, Levels.Num() - 1);
-		if (Levels.IsValidIndex(RandNum))
+		UE_LOG(LogTemp, Warning, TEXT("Starting new minigame"));
+		int32 RandNum = FMath::RandRange(0, MainGameState->GetLevels().Num() - 1);
+		if (MainGameState->GetLevels().IsValidIndex(RandNum))
 		{
-			SetLevelToOpen(Levels[RandNum]);
+			SetLevelToOpen(MainGameState->GetLevels()[RandNum]);
 		}
 		else
 		{
@@ -54,11 +69,11 @@ void AMainGameMode::OnGameEnd()
 	}
 	else if (GetNumOfAlivePlayers() == 1)
 	{
-		SetLevelToOpen(WinLevelData);
+		SetLevelToOpen(MainGameState->GetWinLevelData());
 	}
 	else
 	{
-		SetLevelToOpen(LobbyLevelData);
+		SetLevelToOpen(MainGameState->GetLobbyData());
 	}
 }
 
@@ -89,6 +104,7 @@ void AMainGameMode::OnPlayerDeath()
 {
 	if (GetNumOfAlivePlayers() <= 1)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("All players dead, game ended"));
 		OnGameEnd();
 	}
 }
@@ -99,6 +115,41 @@ void AMainGameMode::GiveRandomPlayerItem(UItemData* Item)
 	if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
 	{
 		PlayersReady[RandNum]->SetEquippedItem(Item);
+	}
+}
+
+#pragma endregion
+
+
+#pragma region Heartbeats
+
+void AMainGameMode::ReceiveHeartbeat(APlayerCharacter* Player)
+{
+	if (IsValid(Player))
+	{
+		MissedHeartbeatsMap.Add(Player, 0);
+	}
+}
+
+void AMainGameMode::CheckForMissedHeartbeats()
+{
+	// Iterate over all player controllers
+	for (auto& Pair : MissedHeartbeatsMap)
+	{
+		APlayerCharacter* PlayerChar = Pair.Key;
+		int32& MissedHeartbeats = Pair.Value;
+
+		// If player controller hasn't sent a heartbeat, increment missed heartbeats count
+		if (MissedHeartbeats < 3)
+		{
+			MissedHeartbeats++;
+		}
+		// If player controller has missed too many heartbeats, kick the player
+		else
+		{
+			UGameplayStatics::OpenLevel(PlayerChar, HeartbeatDisconnectMapName);
+			MissedHeartbeats = 0; // Reset missed heartbeats count after kicking
+		}
 	}
 }
 

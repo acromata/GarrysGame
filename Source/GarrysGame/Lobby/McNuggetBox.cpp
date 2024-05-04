@@ -4,6 +4,7 @@
 #include "../Player/PlayerCharacter.h"
 #include "../DataAssets/LevelData.h"
 #include "../GameState/GarrysGameGameState.h"
+#include "../GameMode/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
 
 // Sets default values

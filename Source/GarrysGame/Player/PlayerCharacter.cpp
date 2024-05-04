@@ -12,6 +12,7 @@
 #include "../Interfaces/InteractableInterface.h"
 #include "../GameInstance/GarrysGame_GameInstance.h"
 #include "../PlayerState/MainPlayerState.h"
+#include "../GameMode/MainGameMode.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -77,7 +78,10 @@ void APlayerCharacter::BeginPlay()
 	// Call Player State after delay
 	FTimerHandle StateTimer;
 	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, .5f);
-	
+
+	// Send a heartbeat to server
+	FTimerHandle HeartbeatTimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &APlayerCharacter::SendHeartbeatToServer, 10.f, true);
 }
 
 // Called every frame
@@ -479,7 +483,7 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 {
 	if (bCanTakeDamage)
 	{
-		CurrentHealth -= Health;
+		CurrentHealth = FMath::Clamp(CurrentHealth - Health, 0, MaxHealth);
 	}
 	
 	if (CurrentHealth <= 0)
@@ -554,8 +558,7 @@ void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
 #pragma endregion
 
 
-#pragma region Player State
-
+#pragma region Player Status
 
 void APlayerCharacter::CheckPlayerState()
 {
@@ -581,6 +584,15 @@ void APlayerCharacter::CheckPlayerState()
 				MainPlayerState->SetIsSpectator(false);
 			}
 		}
+	}
+}
+
+void APlayerCharacter::SendHeartbeatToServer_Implementation()
+{
+	AMainGameMode* GameMode = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
+	if (IsValid(GameMode))
+	{
+		GameMode->ReceiveHeartbeat(this);
 	}
 }
 

@@ -5,7 +5,6 @@
 #include "../DataAssets/LevelData.h"
 #include "GarrysGame_GameInstance.generated.h"
 
-
 UCLASS()
 class GARRYSGAME_API UGarrysGame_GameInstance : public UGameInstance
 {
