@@ -51,6 +51,8 @@ int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 	case TimerPostGame:
 		return PostGameTimerLength;
 		break;
+	case TimerInLobby:
+		return 60;
 	default:
 		return 999;
 	}

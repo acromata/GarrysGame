@@ -15,7 +15,8 @@ enum ETimerEnum
 	TimerPreGame,
 	TimerDuringGame,
 	TimerPostGame,
-	TimerNull
+	TimerNull,
+	TimerInLobby
 };
 
 UCLASS()
@@ -89,7 +90,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	ULevelData* GetWinLevelData() const { return WinLevelData; }
-
 
 	UFUNCTION(BlueprintCallable)
 	TArray<ULevelData*> GetLevels() const { return Levels; }

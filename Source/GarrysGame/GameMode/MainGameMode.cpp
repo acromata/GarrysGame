@@ -69,10 +69,12 @@ void AMainGameMode::OnGameEnd()
 	}
 	else if (GetNumOfAlivePlayers() == 1)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("One player left, game won"));
 		SetLevelToOpen(MainGameState->GetWinLevelData());
 	}
-	else
+	else if(GetNumOfAlivePlayers() <= 0)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("No players left, returning to lobby"));
 		SetLevelToOpen(MainGameState->GetLobbyData());
 	}
 }
@@ -81,6 +83,8 @@ void AMainGameMode::OnGameEnd()
 
 int32 AMainGameMode::GetNumOfAlivePlayers()
 {
+	RemoveInvalidPlayers();
+
 	int32 AlivePlayerCount = NumOfConnectedPlayers;
 
 	for (APlayerCharacter* Player : ConnectedPlayers)
@@ -102,6 +106,8 @@ void AMainGameMode::AddPlayerReady(APlayerCharacter* Player)
 
 void AMainGameMode::OnPlayerDeath()
 {
+	UE_LOG(LogTemp, Warning, TEXT("Player died, %d remaining"), GetNumOfAlivePlayers());
+
 	if (GetNumOfAlivePlayers() <= 1)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("All players dead, game ended"));
@@ -115,6 +121,18 @@ void AMainGameMode::GiveRandomPlayerItem(UItemData* Item)
 	if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
 	{
 		PlayersReady[RandNum]->SetEquippedItem(Item);
+	}
+}
+
+void AMainGameMode::RemoveInvalidPlayers()
+{
+	for (APlayerCharacter* Player : ConnectedPlayers)
+	{
+		if (!IsValid(Player))
+		{
+			ConnectedPlayers.Remove(Player);
+			NumOfConnectedPlayers--;
+		}
 	}
 }
 

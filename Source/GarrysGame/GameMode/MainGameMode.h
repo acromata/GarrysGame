@@ -22,6 +22,8 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void OnGameEnd();
 
+	void RemoveInvalidPlayers();
+
 	UPROPERTY(BlueprintReadWrite)
 	int32 NumOfConnectedPlayers;
 	UPROPERTY(BlueprintReadWrite)
@@ -32,6 +34,9 @@ protected:
 	TArray<APlayerCharacter*> PlayersReady;
 
 	// Level
+	UFUNCTION(BlueprintImplementableEvent)
+	void OpenLevel(const FString& Level);
+
 	FString LevelToOpen;
 
 	// Game instance
@@ -53,9 +58,6 @@ protected:
 public:
 
 	// Levels
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void OpenLevel(const FString& Level);
-
 	UFUNCTION(BlueprintCallable)
 	void SetLevelToOpen(ULevelData* LevelData);
 
@@ -64,6 +66,7 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void CheckIfInLobby(APlayerCharacter* Player);
+
 
 	// Players
 	UFUNCTION(BlueprintCallable)
@@ -76,7 +79,7 @@ public:
 	int32 GetNumOfConnectedPlayers() const { return NumOfConnectedPlayers; }
 
 	UFUNCTION(BlueprintCallable)
-	TArray<APlayerCharacter*> GetConnectedPlayers() { return ConnectedPlayers; }
+	TArray<APlayerCharacter*> GetConnectedPlayers() { RemoveInvalidPlayers(); return ConnectedPlayers; }
 
 	// Players Ready
 	UFUNCTION(BlueprintCallable)

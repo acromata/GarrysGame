@@ -2,10 +2,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "../Player/PlayerCharacter.h"
-#include "../DataAssets/LevelData.h"
 #include "../GameState/GarrysGameGameState.h"
 #include "../GameMode/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 AMcNuggetBox::AMcNuggetBox()
@@ -34,15 +34,27 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Added nugget");
 
-		Player->SetEquippedItem(nullptr);
+		// Add nugget
 		NuggetsInserted++;
+		Player->SetEquippedItem(nullptr);
+
+		// Play SFX
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), NuggetInsertedSFX, GetActorLocation(), GetActorRotation(), 1.f);
 
 		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 		if (IsValid(MainGameMode))
 		{
-			if (NuggetsInserted == MainGameMode->GetNumOfAlivePlayers())
+			if (NuggetsInserted >= MainGameMode->GetNumOfAlivePlayers())
 			{
-				MainGameMode->OpenRandomLevel();
+				if (IsValid(LevelToOpenOverride))
+				{
+					MainGameMode->SetLevelToOpen(LevelToOpenOverride);
+				}
+				else
+				{
+					MainGameMode->OpenRandomLevel();
+				}
+				
 			}
 			else
 			{

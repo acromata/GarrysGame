@@ -12,6 +12,9 @@ class GARRYSGAME_API UGarrysGame_GameInstance : public UGameInstance
 	
 protected:
 
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
+
+	UPROPERTY(Replicated)
 	ULevelData* CurrentLevelData;
 
 public:

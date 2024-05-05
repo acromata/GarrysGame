@@ -77,7 +77,7 @@ void APlayerCharacter::BeginPlay()
 
 	// Call Player State after delay
 	FTimerHandle StateTimer;
-	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, .5f);
+	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, .2f);
 
 	// Send a heartbeat to server
 	FTimerHandle HeartbeatTimerHandle;
@@ -489,9 +489,15 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 	if (CurrentHealth <= 0)
 	{
 		// Die
-		Die();
+		CallDie();
 		GetPlayerState()->SetIsSpectator(true);
 	}
+}
+
+void APlayerCharacter::CallDie_Implementation()
+{
+	// Call on blueprint
+	Die();
 }
 
 #pragma endregion
@@ -509,6 +515,7 @@ void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
 	{
 		ItemEquipped = Item;
 		ItemMesh->SetStaticMesh(ItemEquipped->GetItemMesh());
+		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ItemEquippedSound, GetActorLocation(), GetActorRotation(), 1.0f);
 	}
 	else
 	{

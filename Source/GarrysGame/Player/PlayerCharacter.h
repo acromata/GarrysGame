@@ -164,7 +164,10 @@ protected:
 	float KnockbackForce;
 
 	// Health
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void CallDie();
+
+	UFUNCTION(BlueprintImplementableEvent)
 	void Die();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
@@ -182,6 +185,9 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
 	UItemData* ItemEquipped;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Items")
+	USoundBase* ItemEquippedSound;
 
 	// Interacting
 	UFUNCTION(Server, Reliable)

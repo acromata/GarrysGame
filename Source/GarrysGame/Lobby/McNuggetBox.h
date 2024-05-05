@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "../Interfaces/InteractableInterface.h"
+#include "../DataAssets/LevelData.h"
 #include "McNuggetBox.generated.h"
 
 UCLASS()
@@ -26,6 +27,11 @@ protected:
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 NuggetsInserted;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Maps")
+	ULevelData* LevelToOpenOverride;
+	UPROPERTY(EditDefaultsOnly, Category = "SFX")
+	USoundBase* NuggetInsertedSFX;
 
 public:
 
