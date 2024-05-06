@@ -11,7 +11,6 @@
 #include "Components/StaticMeshComponent.h"
 #include "../Interfaces/InteractableInterface.h"
 #include "../GameInstance/GarrysGame_GameInstance.h"
-#include "../PlayerState/MainPlayerState.h"
 #include "../GameMode/MainGameMode.h"
 
 // Sets default values

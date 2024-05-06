@@ -67,7 +67,6 @@ public:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
 	void CheckIfInLobby(APlayerCharacter* Player);
 
-
 	// Players
 	UFUNCTION(BlueprintCallable)
 	void OnPlayerDeath();

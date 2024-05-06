@@ -4,7 +4,6 @@
 #include "../Player/PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 
-
 void AMainGameMode::BeginPlay()
 {
 	MainGameState = Cast<AGarrysGameGameState>(GameState);
@@ -52,6 +51,15 @@ void AMainGameMode::ReturnToLobby()
 
 void AMainGameMode::OnGameEnd()
 {
+	for (APlayerCharacter* Player : GetConnectedPlayers())
+	{
+		if (!Player->GetIsDead() && !Player->bIsInWinzone)
+		{
+			Player->CallDie();
+		}
+	}
+
+	// Call new map
 	if (GetNumOfAlivePlayers() > 1)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Starting new minigame"));

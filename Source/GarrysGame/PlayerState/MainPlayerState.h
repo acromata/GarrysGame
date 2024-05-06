@@ -21,5 +21,5 @@ public:
 	FString GetPlayerUsername() const { return PlayerUsername; }
 
 	UFUNCTION(BlueprintCallable)
-	void SetPlayerUsername(FString NewName) { PlayerUsername = NewName; }
+	void SetPlayerUsername(FString NewName);
 };

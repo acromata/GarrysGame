@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "InputActionValue.h"
 #include "../DataAssets/ItemData.h"
+#include "../PlayerState/MainPlayerState.h"
 #include "PlayerCharacter.generated.h"
 
 UCLASS()
@@ -164,9 +165,6 @@ protected:
 	float KnockbackForce;
 
 	// Health
-	UFUNCTION(BlueprintCallable, Server, Reliable)
-	void CallDie();
-
 	UFUNCTION(BlueprintImplementableEvent)
 	void Die();
 
@@ -223,6 +221,9 @@ public:
 	// Health
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SubtractHealth(int32 Health);
+	
+	UFUNCTION(BlueprintCallable, Server, Reliable)
+	void CallDie();
 
 	// Equipped Items
 	UFUNCTION(Server, Reliable, BlueprintCallable)
@@ -258,4 +259,8 @@ public:
 
 	// Heartbeats
 	int32 GetNumOfMissedHeartbeats() const { return NumOfMissedHeartbeats;  }
+
+	// Winzone
+	UPROPERTY(BlueprintReadWrite)
+	bool bIsInWinzone;
 };
