@@ -76,7 +76,7 @@ void APlayerCharacter::BeginPlay()
 
 	// Call Player State after delay
 	FTimerHandle StateTimer;
-	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, .2f);
+	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, 1.f);
 
 	// Send a heartbeat to server
 	FTimerHandle HeartbeatTimerHandle;
@@ -164,10 +164,6 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Minigames
 	DOREPLIFETIME(APlayerCharacter, bIsSafeFromStatue);
 	DOREPLIFETIME(APlayerCharacter, PlayerScore);
-
-	// Name
-	DOREPLIFETIME(APlayerCharacter, PlayerName);
-
 }
 
 #pragma region Movement
@@ -566,18 +562,11 @@ void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
 
 #pragma region Player Status
 
-void APlayerCharacter::CheckPlayerState()
+void APlayerCharacter::CheckPlayerState_Implementation()
 {
 	AMainPlayerState* MainPlayerState = Cast<AMainPlayerState>(GetPlayerState());
 	if (IsValid(MainPlayerState))
 	{
-		// Set Name
-		if (IsLocallyControlled())
-		{
-			PlayerName = MainPlayerState->GetPlayerUsername();
-			Server_SetPlayerName(PlayerName);
-		}
-
 		// Check if dead
 		if (MainPlayerState->IsSpectator())
 		{
@@ -596,11 +585,6 @@ void APlayerCharacter::CheckPlayerState()
 			}
 		}
 	}
-}
-
-void APlayerCharacter::Server_SetPlayerName_Implementation(const FString& Name)
-{
-	PlayerName = Name;
 }
 
 void APlayerCharacter::SendHeartbeatToServer_Implementation()

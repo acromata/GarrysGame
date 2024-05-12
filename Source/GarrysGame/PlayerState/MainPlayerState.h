@@ -10,8 +10,12 @@ class GARRYSGAME_API AMainPlayerState : public APlayerState
 {
 	GENERATED_BODY()
 	
-private:
+protected:
 
+	// Network Updates
+	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
+	UPROPERTY(Replicated)
 	FString PlayerUsername;
 
 public:

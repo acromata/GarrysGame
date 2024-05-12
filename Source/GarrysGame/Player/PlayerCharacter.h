@@ -205,14 +205,8 @@ protected:
 	UItemData* StickTagItem;
 
 	// Player Status
+	UFUNCTION(NetMulticast, Reliable)
 	void CheckPlayerState();
-
-	// Player Name
-	UFUNCTION(Server, Reliable)
-	void Server_SetPlayerName(const FString& Name);
-
-	UPROPERTY(Replicated)
-	FString PlayerName;
 
 	// Heartbeat
 	UFUNCTION(Server, Reliable)
@@ -253,13 +247,6 @@ public:
 	// Input
 	UFUNCTION(BlueprintCallable)
 	void EnablePlayerInput() { bAllowInput = true; }
-
-	// Player Name
-	UFUNCTION(BlueprintCallable)
-	FString GetPlayerName() const { return PlayerName; }
-
-	UFUNCTION(BlueprintCallable)
-	void SetPlayerName(FString Name) { PlayerName = Name; Server_SetPlayerName(Name); }
 
 	// Heartbeats
 	int32 GetNumOfMissedHeartbeats() const { return NumOfMissedHeartbeats;  }

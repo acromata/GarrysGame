@@ -13,6 +13,7 @@ void AMainGameMode::BeginPlay()
 	// Check for heartbeats
 	FTimerHandle HeartbeatTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &AMainGameMode::CheckForMissedHeartbeats, 15.f, true);
+
 }
 
 void AMainGameMode::SetLevelToOpen(ULevelData* LevelData)

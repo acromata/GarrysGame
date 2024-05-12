@@ -23,6 +23,8 @@ public:
 
 protected:
 
+	virtual void BeginPlay() override;
+
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
 	UFUNCTION(NetMulticast, Reliable)
@@ -37,6 +39,8 @@ protected:
 	USoundBase* NuggetInsertedSFX;
 	UPROPERTY(EditDefaultsOnly, Category = "Nugget Item")
 	UItemData* NuggetItem;
+
+	class AGarrysGameGameState* MainGameState;
 
 public:
 

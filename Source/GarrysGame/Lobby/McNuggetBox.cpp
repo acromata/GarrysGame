@@ -20,7 +20,6 @@ AMcNuggetBox::AMcNuggetBox()
 	bReplicates = true;
 }
 
-
 void AMcNuggetBox::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
@@ -28,8 +27,20 @@ void AMcNuggetBox::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AMcNuggetBox, NuggetsInserted);
 }
 
+void AMcNuggetBox::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// Get Game state
+	MainGameState = Cast<AGarrysGameGameState>(UGameplayStatics::GetGameState(GetWorld()));
+}
+
 void AMcNuggetBox::Interact(APlayerCharacter* Player)
 {
+	// Get game mode
+	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
+
+	// Check if player has nugget
 	if (IsValid(Player->GetEquippedItem()) && Player->GetEquippedItem()->GetItemName() == "Nugget")
 	{
 		GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, "Added nugget");
@@ -41,7 +52,6 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 		// Play SFX
 		PlaySFXForClients();
 
-		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 		if (IsValid(MainGameMode))
 		{
 			if (NuggetsInserted >= MainGameMode->GetNumOfAlivePlayers())
@@ -52,9 +62,8 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 				}
 				else
 				{
-					MainGameMode->OpenRandomLevel();
+					MainGameState->SetTimerType(ETimerEnum::LTimerAllReady);
 				}
-				
 			}
 			else
 			{
@@ -62,7 +71,8 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 			}
 		}
 	}
-	else if (Player->GetEquippedItem() == nullptr)
+	// If player has no equipped item and everyone isn't ready
+	else if (Player->GetEquippedItem() == nullptr && NuggetsInserted < MainGameMode->GetNumOfAlivePlayers())
 	{
 		// Player has no items, return nugget
 		NuggetsInserted--;

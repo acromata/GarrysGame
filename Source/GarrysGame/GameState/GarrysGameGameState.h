@@ -12,11 +12,15 @@
 UENUM(BlueprintType)
 enum ETimerEnum
 {
+	// Minigame Timers
 	TimerPreGame,
 	TimerDuringGame,
 	TimerPostGame,
 	TimerNull,
-	TimerInLobby
+	
+	// Lobby Timers
+	LTimerNotReady,
+	LTimerAllReady
 };
 
 UCLASS()
@@ -64,10 +68,9 @@ protected:
 
 public:
 
-
 	// Timer
 	UFUNCTION(BlueprintCallable)
-	int32 SubtractTime() { CurrentTimerTime--; return CurrentTimerTime; };
+	int32 SubtractTime();
 
 	UFUNCTION(BlueprintCallable)
 	void SetTimerTime(int32 Time) { CurrentTimerTime = Time; }
@@ -82,7 +85,7 @@ public:
 	TEnumAsByte<ETimerEnum> MoveToNextTimerType();
 
 	UFUNCTION(BlueprintCallable)
-	void SetTimerType(TEnumAsByte<ETimerEnum> TimerType) { CurrentTimerEnum = TimerType; }
+	void SetTimerType(TEnumAsByte<ETimerEnum> TimerType);
 
 	 //Levels
 	UFUNCTION(BlueprintCallable)

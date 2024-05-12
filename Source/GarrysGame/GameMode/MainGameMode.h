@@ -69,7 +69,7 @@ public:
 	TArray<APlayerCharacter*> GetConnectedPlayers();
 
 	UFUNCTION(BlueprintCallable)
-	int32 GetNumOfConnectedPlayers() { return GetConnectedPlayers().Num() - 1; }
+	int32 GetNumOfConnectedPlayers() { return GetConnectedPlayers().Num(); }
 
 	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfAlivePlayers();

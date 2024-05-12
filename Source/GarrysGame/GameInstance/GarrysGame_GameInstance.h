@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
 #include "../DataAssets/LevelData.h"
+#include "../Player/PlayerCharacter.h"
 #include "GarrysGame_GameInstance.generated.h"
 
 UCLASS()
@@ -24,4 +25,5 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	ULevelData* GetCurrentLevel() const { return CurrentLevelData; }
+
 };

@@ -8,8 +8,15 @@ void AGarrysGameGameState::BeginPlay()
 	Super::BeginPlay();
 
 	// Timer
-	CurrentTimerTime = PreGameTimerLength;
-
+	if (UGameplayStatics::GetCurrentLevelName(GetWorld(), true) == "Lobby")
+	{
+		SetTimerType(ETimerEnum::LTimerNotReady);
+	}
+	else
+	{
+		SetTimerType(ETimerEnum::TimerPreGame);
+	}
+	
 	// Game Instance
 	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
 
@@ -30,6 +37,7 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 {
+	// Get minigame time from minigame data
 	int32 MinigameTimeLength;
 	if (IsValid(GameInstance) && IsValid(GameInstance->GetCurrentLevel()) && IsValid(GameInstance->GetCurrentLevel()->GetMinigameData()))
 	{
@@ -37,9 +45,10 @@ int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 	}
 	else
 	{
-		MinigameTimeLength = 3;
+		MinigameTimeLength = 0;
 	}
 
+	// Return time based off current enum
 	switch (CurrentTimerEnum)
 	{
 	case TimerPreGame:
@@ -51,15 +60,25 @@ int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 	case TimerPostGame:
 		return PostGameTimerLength;
 		break;
-	case TimerInLobby:
+	case LTimerNotReady:
 		return 60;
+	case LTimerAllReady:
+		return 5;
 	default:
 		return 999;
 	}
 }
 
+int32 AGarrysGameGameState::SubtractTime()
+{
+	CurrentTimerTime = FMath::Clamp(CurrentTimerTime - 1, 0, 999);
+	return CurrentTimerTime;
+}
+
+// Called when timer hits 0
 TEnumAsByte<ETimerEnum> AGarrysGameGameState::MoveToNextTimerType()
 {
+	// Sets Current Timer Enum to the next enum, then sets Timer Time
 	switch (CurrentTimerEnum)
 	{
 	case TimerPreGame:
@@ -70,12 +89,18 @@ TEnumAsByte<ETimerEnum> AGarrysGameGameState::MoveToNextTimerType()
 		CurrentTimerEnum = ETimerEnum::TimerPostGame;
 		CurrentTimerTime = GetTimeFromTimerEnum();
 		break;
-	default:
-		CurrentTimerEnum = ETimerEnum::TimerNull;
-		CurrentTimerTime = 999;
 	}
 
 	return CurrentTimerEnum;
+}
+
+void AGarrysGameGameState::SetTimerType(TEnumAsByte<ETimerEnum> TimerType)
+{
+	// Set the enum
+	CurrentTimerEnum = TimerType;
+
+	// Set the time
+	CurrentTimerTime = GetTimeFromTimerEnum();
 }
 
 #pragma endregion
