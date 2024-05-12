@@ -22,12 +22,6 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void OnGameEnd();
 
-	void RemoveInvalidPlayers();
-
-	UPROPERTY(BlueprintReadWrite)
-	int32 NumOfConnectedPlayers;
-	UPROPERTY(BlueprintReadWrite)
-	TArray<APlayerCharacter*> ConnectedPlayers;
 	UPROPERTY(BlueprintReadWrite)
 	int32 NumOfPlayersReady;
 	UPROPERTY(BlueprintReadWrite)
@@ -72,13 +66,13 @@ public:
 	void OnPlayerDeath();
 
 	UFUNCTION(BlueprintCallable)
+	TArray<APlayerCharacter*> GetConnectedPlayers();
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetNumOfConnectedPlayers() { return GetConnectedPlayers().Num() - 1; }
+
+	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfAlivePlayers();
-
-	UFUNCTION(BlueprintCallable)
-	int32 GetNumOfConnectedPlayers() const { return NumOfConnectedPlayers; }
-
-	UFUNCTION(BlueprintCallable)
-	TArray<APlayerCharacter*> GetConnectedPlayers() { RemoveInvalidPlayers(); return ConnectedPlayers; }
 
 	// Players Ready
 	UFUNCTION(BlueprintCallable)

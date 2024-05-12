@@ -25,6 +25,9 @@ protected:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
+	UFUNCTION(NetMulticast, Reliable)
+	void PlaySFXForClients(float Pitch = 1.f);
+
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 NuggetsInserted;
 
@@ -32,6 +35,8 @@ protected:
 	ULevelData* LevelToOpenOverride;
 	UPROPERTY(EditDefaultsOnly, Category = "SFX")
 	USoundBase* NuggetInsertedSFX;
+	UPROPERTY(EditDefaultsOnly, Category = "Nugget Item")
+	UItemData* NuggetItem;
 
 public:
 

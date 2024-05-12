@@ -572,8 +572,13 @@ void APlayerCharacter::CheckPlayerState()
 	if (IsValid(MainPlayerState))
 	{
 		// Set Name
-		PlayerName = MainPlayerState->GetPlayerUsername();
+		if (IsLocallyControlled())
+		{
+			PlayerName = MainPlayerState->GetPlayerUsername();
+			Server_SetPlayerName(PlayerName);
+		}
 
+		// Check if dead
 		if (MainPlayerState->IsSpectator())
 		{
 			// If in minigame & dead, spawn as spectator.
@@ -591,6 +596,11 @@ void APlayerCharacter::CheckPlayerState()
 			}
 		}
 	}
+}
+
+void APlayerCharacter::Server_SetPlayerName_Implementation(const FString& Name)
+{
+	PlayerName = Name;
 }
 
 void APlayerCharacter::SendHeartbeatToServer_Implementation()

@@ -207,6 +207,10 @@ protected:
 	// Player Status
 	void CheckPlayerState();
 
+	// Player Name
+	UFUNCTION(Server, Reliable)
+	void Server_SetPlayerName(const FString& Name);
+
 	UPROPERTY(Replicated)
 	FString PlayerName;
 
@@ -255,7 +259,7 @@ public:
 	FString GetPlayerName() const { return PlayerName; }
 
 	UFUNCTION(BlueprintCallable)
-	void SetPlayerName(FString Name) { PlayerName = Name; }
+	void SetPlayerName(FString Name) { PlayerName = Name; Server_SetPlayerName(Name); }
 
 	// Heartbeats
 	int32 GetNumOfMissedHeartbeats() const { return NumOfMissedHeartbeats;  }

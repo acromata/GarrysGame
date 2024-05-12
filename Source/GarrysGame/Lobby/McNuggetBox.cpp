@@ -39,7 +39,7 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 		Player->SetEquippedItem(nullptr);
 
 		// Play SFX
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), NuggetInsertedSFX, GetActorLocation(), GetActorRotation(), 1.f);
+		PlaySFXForClients();
 
 		AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 		if (IsValid(MainGameMode))
@@ -61,10 +61,19 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 				GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Nugget Inserted"));
 			}
 		}
-		else
-		{
-			GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Red, ("Invalid"));
-		}
+	}
+	else if (Player->GetEquippedItem() == nullptr)
+	{
+		// Player has no items, return nugget
+		NuggetsInserted--;
+		Player->SetEquippedItem(NuggetItem);
+
+		// Play SFX at lower pitch
+		PlaySFXForClients(0.8);
 	}
 }
 
+void AMcNuggetBox::PlaySFXForClients_Implementation(float Pitch)
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), NuggetInsertedSFX, GetActorLocation(), GetActorRotation(), 1.f, Pitch);
+}

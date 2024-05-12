@@ -3,6 +3,7 @@
 #include "../DataAssets/LevelData.h"
 #include "../Player/PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
+#include "EngineUtils.h"
 
 void AMainGameMode::BeginPlay()
 {
@@ -91,11 +92,9 @@ void AMainGameMode::OnGameEnd()
 
 int32 AMainGameMode::GetNumOfAlivePlayers()
 {
-	RemoveInvalidPlayers();
+	int32 AlivePlayerCount = GetNumOfConnectedPlayers();
 
-	int32 AlivePlayerCount = NumOfConnectedPlayers;
-
-	for (APlayerCharacter* Player : ConnectedPlayers)
+	for (APlayerCharacter* Player : GetConnectedPlayers())
 	{
 		if (Player->GetIsDead())
 		{
@@ -104,6 +103,18 @@ int32 AMainGameMode::GetNumOfAlivePlayers()
 	}
 
 	return AlivePlayerCount;
+}
+
+TArray<APlayerCharacter*> AMainGameMode::GetConnectedPlayers()
+{
+	TArray<APlayerCharacter*> PlayerCharacters;
+
+	for (TActorIterator<APlayerCharacter> ActorItr(GetWorld()); ActorItr; ++ActorItr)
+	{
+		PlayerCharacters.Add(*ActorItr);
+	}
+
+	return PlayerCharacters;
 }
 
 void AMainGameMode::AddPlayerReady(APlayerCharacter* Player)
@@ -129,18 +140,6 @@ void AMainGameMode::GiveRandomPlayerItem(UItemData* Item)
 	if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
 	{
 		PlayersReady[RandNum]->SetEquippedItem(Item);
-	}
-}
-
-void AMainGameMode::RemoveInvalidPlayers()
-{
-	for (APlayerCharacter* Player : ConnectedPlayers)
-	{
-		if (!IsValid(Player))
-		{
-			ConnectedPlayers.Remove(Player);
-			NumOfConnectedPlayers--;
-		}
 	}
 }
 
