@@ -1,7 +1,11 @@
-#include "../GameState/GarrysGameGameState.h"
+#include "GarrysGame/Core/GameState/GarrysGameGameState.h"
 #include "Kismet/GameplayStatics.h"
 #include "Net/UnrealNetwork.h"
 #include "Containers/Array.h"
+#include "GarrysGame/Player/PlayerCharacter.h"
+#include "GarrysGame/DataAssets/ItemData.h"
+#include "GarrysGame/DataAssets/LevelData.h"
+#include "GarrysGame/Core/GameMode/MainGameMode.h"
 
 void AGarrysGameGameState::BeginPlay()
 {
@@ -45,7 +49,7 @@ int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 	}
 	else
 	{
-		MinigameTimeLength = 0;
+		MinigameTimeLength = 62;
 	}
 
 	// Return time based off current enum

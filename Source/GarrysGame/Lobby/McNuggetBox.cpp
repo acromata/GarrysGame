@@ -1,9 +1,9 @@
-#include "../Lobby/McNuggetBox.h"
+#include "GarrysGame/Lobby/McNuggetBox.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
-#include "../Player/PlayerCharacter.h"
-#include "../GameState/GarrysGameGameState.h"
-#include "../GameMode/MainGameMode.h"
+#include "GarrysGame/Player/PlayerCharacter.h"
+#include "GarrysGame/Core/GameState/GarrysGameGameState.h"
+#include "GarrysGame/Core/GameMode/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
 

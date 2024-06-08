@@ -1,7 +1,7 @@
-#include "../GameMode/MainGameMode.h"
-#include "../GameState/GarrysGameGameState.h"
-#include "../DataAssets/LevelData.h"
-#include "../Player/PlayerCharacter.h"
+#include "GarrysGame/Core/GameMode/MainGameMode.h"
+#include "GarrysGame/Core/GameState/GarrysGameGameState.h"
+#include "GarrysGame/DataAssets/LevelData.h"
+#include "GarrysGame/Player/PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
 

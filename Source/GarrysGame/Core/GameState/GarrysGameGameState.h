@@ -2,11 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
-#include "../Player/PlayerCharacter.h"
-#include "../DataAssets/ItemData.h"
-#include "../DataAssets/LevelData.h"
-#include "../GameInstance/GarrysGame_GameInstance.h"
-#include "../GameMode/MainGameMode.h"
+#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGameGameState.generated.h"
 
 UENUM(BlueprintType)

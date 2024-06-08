@@ -2,8 +2,8 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
-#include "../DataAssets/LevelData.h"
-#include "../Player/PlayerCharacter.h"
+#include "GarrysGame/DataAssets/LevelData.h"
+#include "GarrysGame/Player/PlayerCharacter.h"
 #include "GarrysGame_GameInstance.generated.h"
 
 UCLASS()

@@ -10,8 +10,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/StaticMeshComponent.h"
 #include "../Interfaces/InteractableInterface.h"
-#include "../GameInstance/GarrysGame_GameInstance.h"
-#include "../GameMode/MainGameMode.h"
+#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
+#include "GarrysGame/Core/GameMode/MainGameMode.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()

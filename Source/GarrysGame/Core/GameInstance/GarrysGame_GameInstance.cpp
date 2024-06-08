@@ -1,4 +1,4 @@
-#include "../GameInstance/GarrysGame_GameInstance.h"
+#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "Net/UnrealNetwork.h"
 
 void UGarrysGame_GameInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

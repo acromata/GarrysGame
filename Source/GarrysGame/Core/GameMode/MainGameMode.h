@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "../GameInstance/GarrysGame_GameInstance.h"
+#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "MainGameMode.generated.h"
 
 
@@ -30,6 +30,8 @@ protected:
 	// Level
 	UFUNCTION(BlueprintImplementableEvent)
 	void OpenLevel(const FString& Level);
+
+	void SetCurrentLevel(ULevelData* Data);
 
 	FString LevelToOpen;
 
