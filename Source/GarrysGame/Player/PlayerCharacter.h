@@ -220,7 +220,7 @@ public:
 	UFUNCTION(Server, Reliable, BlueprintCallable)
 	void SubtractHealth(int32 Health);
 	
-	UFUNCTION(BlueprintCallable, Server, Reliable)
+	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
 	void CallDie();
 
 	// Equipped Items

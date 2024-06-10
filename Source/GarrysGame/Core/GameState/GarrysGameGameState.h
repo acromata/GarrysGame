@@ -60,6 +60,7 @@ protected:
 
 	class AMainGameMode* MainGameMode;
 
+	UPROPERTY(BlueprintReadOnly)
 	UGarrysGame_GameInstance* GameInstance;
 
 public:

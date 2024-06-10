@@ -224,7 +224,7 @@ void APlayerCharacter::HandleJump_Implementation()
 
 void APlayerCharacter::StartSprint_Implementation()
 {
-	if (GetVelocity().Size() >= 0.5)
+	if (GetVelocity().Size() >= 0.5 && (GetCharacterMovement()->IsMovingOnGround() || bIsSliding))
 	{
 		bIsRunning = true;
 	}
@@ -267,12 +267,6 @@ void APlayerCharacter::StartCrouch_Implementation()
 		if ((bIsRunning || GetVelocity().Size() > WalkSpeed + 50.f) && CurrentSlideForce > CrouchSpeed && // Check if fast enough
 		(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
 		{
-			// Play Sound
-			if (!bIsSliding)
-			{
-				UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
-			}
-
 			// Allow Sliding
 			bIsSliding = true;
 
@@ -349,6 +343,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		CurrentSlideForce = SlideForce;
 	}
 
+	static bool hasPlayedSound;
 	// Slide
 	if (bIsSliding && bIsCrouched)
 	{
@@ -363,6 +358,14 @@ void APlayerCharacter::HandleCrouch_Implementation()
 
 		// Disable jump force
 		bIsAwaitingSlideJump = false;
+
+		// Play Sound
+		
+		if (!hasPlayedSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
+			hasPlayedSound = true;
+		}
 	}
 	else
 	{
@@ -371,6 +374,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		bUseControllerRotationYaw = true;
 		bIsAwaitingSlideJump = false;
 		bCanSlideJump = false;
+		hasPlayedSound = false;
 	}
 }
 
@@ -480,7 +484,7 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 	{
 		CurrentHealth = FMath::Clamp(CurrentHealth - Health, 0, MaxHealth);
 	}
-	
+
 	if (CurrentHealth <= 0)
 	{
 		// Die
