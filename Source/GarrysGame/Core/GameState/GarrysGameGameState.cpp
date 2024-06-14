@@ -65,9 +65,9 @@ int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 		return PostGameTimerLength;
 		break;
 	case LTimerNotReady:
-		return 60;
+		return NotReadyLobbyTimer;
 	case LTimerAllReady:
-		return 5;
+		return PlayersReadyLobbyTimer;
 	default:
 		return 999;
 	}

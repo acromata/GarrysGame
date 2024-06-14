@@ -117,6 +117,8 @@ protected:
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float JumpForceWhileSliding;
+	UPROPERTY(Replicated)
+	bool hasPlayedSlideSound;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
@@ -179,7 +181,7 @@ protected:
 
 	// Items
 	UFUNCTION(NetMulticast, Reliable)
-	void SetEquippedItem_Multicast(UItemData* Item);
+	void SetEquippedItem_Multicast(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr);
 
 	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
 	UItemData* ItemEquipped;
@@ -204,10 +206,6 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "TagMinigame")
 	UItemData* StickTagItem;
 
-	// Player Status
-	UFUNCTION(NetMulticast, Reliable)
-	void CheckPlayerState();
-
 	// Heartbeat
 	UFUNCTION(Server, Reliable)
 	void SendHeartbeatToServer();
@@ -225,7 +223,7 @@ public:
 
 	// Equipped Items
 	UFUNCTION(Server, Reliable, BlueprintCallable)
-	void SetEquippedItem(UItemData* Item);
+	void SetEquippedItem(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr);
 
 	UFUNCTION(BlueprintCallable, Category = "Items")
 	UItemData* GetEquippedItem() const { return ItemEquipped; }

@@ -64,17 +64,20 @@ void AMainGameMode::OnGameEnd()
 	// Call new map
 	if (GetNumOfAlivePlayers() > 1)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Starting new minigame"));
-		int32 RandNum = FMath::RandRange(0, MainGameState->GetLevels().Num() - 1);
-		if (MainGameState->GetLevels().IsValidIndex(RandNum))
+		// Run until valid map is selected
+		while (true)
 		{
-			SetLevelToOpen(MainGameState->GetLevels()[RandNum]);
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Invalid level, attempting again"));
-			OnGameEnd();
-			return;
+			UE_LOG(LogTemp, Warning, TEXT("Starting new minigame..."));
+			int32 RandNum = FMath::RandRange(0, MainGameState->GetLevels().Num() - 1);
+			if (MainGameState->GetLevels().IsValidIndex(RandNum))
+			{
+				SetLevelToOpen(MainGameState->GetLevels()[RandNum]);
+				break;
+			}
+			else
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Invalid level, attempting again"));
+			}
 		}
 	}
 	else if (GetNumOfAlivePlayers() == 1)
@@ -128,20 +131,31 @@ void AMainGameMode::OnPlayerDeath()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Player died, %d remaining"), GetNumOfAlivePlayers());
 
-	if (GetNumOfAlivePlayers() <= 1)
+	if (GetNumOfAlivePlayers() < 1)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("All players dead, game ended"));
-		OnGameEnd();
+		MainGameState->SetTimerType(ETimerEnum::TimerPostGame);
+
+		// Calls endgame sound & countdown to open next level
+		MainGameState->OnTimerChange();
 	}
 }
 
-void AMainGameMode::GiveRandomPlayerItem(UItemData* Item)
+APlayerCharacter* AMainGameMode::GiveRandomPlayerItem(UItemData* Item)
 {
-	int32 RandNum = FMath::RandRange(0, PlayersReady.Num() - 1);
-	if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
+	APlayerCharacter* Player;
+	while (true)
 	{
-		PlayersReady[RandNum]->SetEquippedItem(Item);
+		int32 RandNum = FMath::RandRange(0, PlayersReady.Num() - 1);
+		if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
+		{
+			Player = PlayersReady[RandNum];
+			break;
+		}
 	}
+
+	Player->SetEquippedItem(Item);
+	return Player;
 }
 
 #pragma endregion
@@ -159,7 +173,7 @@ void AMainGameMode::ReceiveHeartbeat(APlayerCharacter* Player)
 
 void AMainGameMode::CheckForMissedHeartbeats()
 {
-	// Iterate over all player controllers
+	// Iterate over all players
 	for (auto& Pair : MissedHeartbeatsMap)
 	{
 		APlayerCharacter* PlayerChar = Pair.Key;

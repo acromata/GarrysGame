@@ -41,6 +41,10 @@ protected:
 	int32 PreGameTimerLength;
 	UPROPERTY(EditDefaultsOnly, Category = "Timer")
 	int32 PostGameTimerLength;
+	UPROPERTY(EditDefaultsOnly, Category = "Timer")
+	int32 NotReadyLobbyTimer;
+	UPROPERTY(EditDefaultsOnly, Category = "Timer")
+	int32 PlayersReadyLobbyTimer;
 
 	UPROPERTY(Replicated)
 	int32 CurrentTimerTime;
@@ -84,7 +88,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SetTimerType(TEnumAsByte<ETimerEnum> TimerType);
 
-	 //Levels
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnTimerChange();
+
+	// Levels
 	UFUNCTION(BlueprintCallable)
 	ULevelData* GetLobbyData() const { return LobbyLevelData; }
 

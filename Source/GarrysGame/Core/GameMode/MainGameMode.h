@@ -26,6 +26,10 @@ protected:
 	int32 NumOfPlayersReady;
 	UPROPERTY(BlueprintReadWrite)
 	TArray<APlayerCharacter*> PlayersReady;
+	UPROPERTY(BlueprintReadWrite)
+	TArray<APlayerCharacter*> PlayersToLoadInMinigame;
+	UPROPERTY(BlueprintReadWrite)
+	bool bAcceptNewPlayers;
 
 	// Level
 	UFUNCTION(BlueprintImplementableEvent)
@@ -90,8 +94,12 @@ public:
 	bool IsAllPlayersReady() { return NumOfPlayersReady >= GetNumOfAlivePlayers(); }
 
 	UFUNCTION(BlueprintCallable)
-	void GiveRandomPlayerItem(UItemData* Item);
+	APlayerCharacter* GiveRandomPlayerItem(UItemData* Item);
 
 	// Heartbeat
 	void ReceiveHeartbeat(APlayerCharacter* Player);
+
+	// Player with stick
+	UPROPERTY(BlueprintReadWrite)
+	APlayerCharacter* PlayerTagged;
 };

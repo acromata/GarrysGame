@@ -74,13 +74,24 @@ void APlayerCharacter::BeginPlay()
 	// Health
 	CurrentHealth = MaxHealth;
 
-	// Call Player State after delay
-	FTimerHandle StateTimer;
-	GetWorld()->GetTimerManager().SetTimer(StateTimer, this, &APlayerCharacter::CheckPlayerState, 1.f);
-
 	// Send a heartbeat to server
 	FTimerHandle HeartbeatTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &APlayerCharacter::SendHeartbeatToServer, 10.f, true);
+
+	// Check if in lobby
+	if (HasAuthority())
+	{
+		AMainGameMode* GameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
+		if (IsValid(GameMode))
+		{
+			GameMode->CheckIfInLobby(this);
+			UE_LOG(LogTemp, Warning, TEXT("Lobby checked"));
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Lobby check failed"));
+		}
+	}
 }
 
 // Called every frame
@@ -152,6 +163,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
 	DOREPLIFETIME(APlayerCharacter, bCanSlideJump);
+	DOREPLIFETIME(APlayerCharacter, hasPlayedSlideSound);
 
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
@@ -343,7 +355,6 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		CurrentSlideForce = SlideForce;
 	}
 
-	static bool hasPlayedSound;
 	// Slide
 	if (bIsSliding && bIsCrouched)
 	{
@@ -360,11 +371,10 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		bIsAwaitingSlideJump = false;
 
 		// Play Sound
-		
-		if (!hasPlayedSound)
+		if (!hasPlayedSlideSound)
 		{
 			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
-			hasPlayedSound = true;
+			hasPlayedSlideSound = true;
 		}
 	}
 	else
@@ -374,7 +384,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		bUseControllerRotationYaw = true;
 		bIsAwaitingSlideJump = false;
 		bCanSlideJump = false;
-		hasPlayedSound = false;
+		hasPlayedSlideSound = false;
 	}
 }
 
@@ -386,17 +396,60 @@ void APlayerCharacter::ServerHit_Implementation()
 {
 	if (bCanHit && bAllowInput)
 	{
+		// Hit Delay
+		FTimerHandle Timer;
+		GetWorld()->GetTimerManager().SetTimer(Timer, this, &APlayerCharacter::AllowHitting, HitDelay);
+		bCanHit = false;
+
+		// Line Trace
+		FVector StartLocation = Camera->GetComponentLocation();
+		FVector EndLocation = StartLocation + (Camera->GetComponentRotation().Vector() * HitDistance);
+
+		FHitResult HitResult;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this);
+
+		// The line trace
+		bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
+
+		//DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::White, false, 1, 0, 1);
+
+		// If hit
+		if (bIsHit)
+		{
+			APlayerCharacter* HitPlayer = Cast<APlayerCharacter>(HitResult.GetActor());
+			if (IsValid(HitPlayer))
+			{
+				// Get Direction
+				FVector NewHitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+
+				// Launch
+				if (IsValid(GetEquippedItem()) && GetEquippedItem()->GetItemType() == EItemType::TagItem)
+				{
+					// If item is tag item, do extra knockback
+					HitPlayer->StartKnockback(NewHitDirection, HitForce * GetEquippedItem()->GetItemValue());
+					HitPlayer->SetEquippedItem(StickTagItem);
+					SetEquippedItem(nullptr);
+
+					AMainGameMode* GameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
+					if (IsValid(GameMode))
+					{
+						GameMode->PlayerTagged = HitPlayer;
+					}
+				}
+				else
+				{
+					HitPlayer->StartKnockback(NewHitDirection, HitForce);
+				}
+			}
+		}
+
 		HandleHit();
 	}
 }
 
 void APlayerCharacter::HandleHit_Implementation()
 {
-	// Hit Delay
-	FTimerHandle Timer;
-	GetWorld()->GetTimerManager().SetTimer(Timer, this, &APlayerCharacter::AllowHitting, HitDelay);
-	bCanHit = false;
-
 	// Play sound
 	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), GetActorRotation(), 1.5f);
 
@@ -406,43 +459,6 @@ void APlayerCharacter::HandleHit_Implementation()
 	{
 		AnimationInstance->Montage_Play(HitAnimation);
 	}
-
-	// Line Trace
-	FVector StartLocation = Camera->GetComponentLocation();
-	FVector EndLocation = StartLocation + (Camera->GetComponentRotation().Vector() * HitDistance);
-
-	FHitResult HitResult;
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(this);
-
-	// The line trace
-	bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
-
-	// If hit
-	if (bIsHit)
-	{
-		APlayerCharacter* HitPlayer = Cast<APlayerCharacter>(HitResult.GetActor());
-		if (IsValid(HitPlayer))
-		{
-			// Get Direction
-			FVector NewHitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
-
-			// Launch
-			if (IsValid(GetEquippedItem()) && GetEquippedItem()->GetItemType() == EItemType::TagItem)
-			{
-				// If item is tag item, do extra knockback
-				HitPlayer->StartKnockback(NewHitDirection, HitForce * GetEquippedItem()->GetItemValue());
-				HitPlayer->SetEquippedItem(StickTagItem);
-				SetEquippedItem(nullptr);
-			}
-			else
-			{
-				HitPlayer->StartKnockback(NewHitDirection, HitForce);
-			}
-		}
-	}
-
-	//DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::White, false, 1, 0, 1);
 
 }
 
@@ -489,7 +505,6 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 	{
 		// Die
 		CallDie();
-		GetPlayerState()->SetIsSpectator(true);
 	}
 }
 
@@ -503,12 +518,12 @@ void APlayerCharacter::CallDie_Implementation()
 
 #pragma region Item Equip
 
-void APlayerCharacter::SetEquippedItem_Implementation(UItemData* Item)
+void APlayerCharacter::SetEquippedItem_Implementation(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr)
 {
-	SetEquippedItem_Multicast(Item);
+	SetEquippedItem_Multicast(Item, ReceivingPlayer);
 }
 
-void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item)
+void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr)
 {
 	if (IsValid(Item))
 	{
@@ -564,36 +579,11 @@ void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
 #pragma endregion
 
 
-#pragma region Player Status
-
-void APlayerCharacter::CheckPlayerState_Implementation()
-{
-	AMainPlayerState* MainPlayerState = Cast<AMainPlayerState>(GetPlayerState());
-	if (IsValid(MainPlayerState))
-	{
-		// Check if dead
-		if (MainPlayerState->IsSpectator())
-		{
-			// If in minigame & dead, spawn as spectator.
-			FString CurrentLevelName = GetWorld()->GetMapName();
-			CurrentLevelName.RemoveFromStart(GetWorld()->StreamingLevelsPrefix);
-			if (CurrentLevelName != "Lobby")
-			{
-				// Die
-				GetMesh()->Deactivate();
-				Die();
-			}
-			else
-			{
-				MainPlayerState->SetIsSpectator(false);
-			}
-		}
-	}
-}
+#pragma region Server Heartbeat
 
 void APlayerCharacter::SendHeartbeatToServer_Implementation()
 {
-	AMainGameMode* GameMode = Cast<AMainGameMode>(GetWorld()->GetAuthGameMode());
+	AMainGameMode* GameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
 	if (IsValid(GameMode))
 	{
 		GameMode->ReceiveHeartbeat(this);
