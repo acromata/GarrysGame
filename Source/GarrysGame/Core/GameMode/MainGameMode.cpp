@@ -94,19 +94,18 @@ void AMainGameMode::OnGameEnd()
 
 #pragma region Players
 
-int32 AMainGameMode::GetNumOfAlivePlayers()
+TArray<APlayerCharacter*> AMainGameMode::GetAlivePlayers()
 {
-	int32 AlivePlayerCount = GetNumOfConnectedPlayers();
-
+	TArray<APlayerCharacter*> AlivePlayers;
 	for (APlayerCharacter* Player : GetConnectedPlayers())
 	{
-		if (Player->GetIsDead())
+		if (!Player->GetIsDead())
 		{
-			AlivePlayerCount--;
+			AlivePlayers.Add(Player);
 		}
 	}
 
-	return AlivePlayerCount;
+	return AlivePlayers;
 }
 
 TArray<APlayerCharacter*> AMainGameMode::GetConnectedPlayers()
@@ -135,9 +134,6 @@ void AMainGameMode::OnPlayerDeath()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("All players dead, game ended"));
 		MainGameState->SetTimerType(ETimerEnum::TimerPostGame);
-
-		// Calls endgame sound & countdown to open next level
-		MainGameState->OnTimerChange();
 	}
 }
 

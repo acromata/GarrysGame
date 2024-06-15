@@ -78,7 +78,10 @@ public:
 	int32 GetNumOfConnectedPlayers() { return GetConnectedPlayers().Num(); }
 
 	UFUNCTION(BlueprintCallable)
-	int32 GetNumOfAlivePlayers();
+	TArray<APlayerCharacter*> GetAlivePlayers();
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetNumOfAlivePlayers() { return GetAlivePlayers().Num(); }
 
 	// Players Ready
 	UFUNCTION(BlueprintCallable)

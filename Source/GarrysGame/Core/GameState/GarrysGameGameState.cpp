@@ -95,6 +95,9 @@ TEnumAsByte<ETimerEnum> AGarrysGameGameState::MoveToNextTimerType()
 		break;
 	}
 
+	// Blueprint code
+	OnTimerChange();
+
 	return CurrentTimerEnum;
 }
 
@@ -105,6 +108,9 @@ void AGarrysGameGameState::SetTimerType(TEnumAsByte<ETimerEnum> TimerType)
 
 	// Set the time
 	CurrentTimerTime = GetTimeFromTimerEnum();
+
+	// Blueprint code
+	OnTimerChange();
 }
 
 #pragma endregion
