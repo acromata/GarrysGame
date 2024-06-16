@@ -117,8 +117,6 @@ protected:
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float JumpForceWhileSliding;
-	UPROPERTY(Replicated)
-	bool hasPlayedSlideSound;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;

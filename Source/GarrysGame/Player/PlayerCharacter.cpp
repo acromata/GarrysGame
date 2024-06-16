@@ -163,7 +163,6 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
 	DOREPLIFETIME(APlayerCharacter, bCanSlideJump);
-	DOREPLIFETIME(APlayerCharacter, hasPlayedSlideSound);
 
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
@@ -355,6 +354,7 @@ void APlayerCharacter::HandleCrouch_Implementation()
 		CurrentSlideForce = SlideForce;
 	}
 
+	static bool hasPlayedSlideSound;
 	// Slide
 	if (bIsSliding && bIsCrouched)
 	{
