@@ -33,7 +33,7 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	int32 NuggetsInserted;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Maps")
+	UPROPERTY(EditAnywhere, Category = "Maps")
 	ULevelData* LevelToOpenOverride;
 	UPROPERTY(EditDefaultsOnly, Category = "SFX")
 	USoundBase* NuggetInsertedSFX;

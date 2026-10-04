@@ -14,15 +14,54 @@ void AMainGameMode::BeginPlay()
 	FTimerHandle HeartbeatTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &AMainGameMode::CheckForMissedHeartbeats, 15.f, true);
 
+	bUseSeamlessTravel = true;
+	bAcceptNewPlayers = true;
+
 }
+
+void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
+{
+	if (UGameplayStatics::GetCurrentLevelName(GetWorld(), true) == "Lobby")
+	{
+		Player->SetEquippedItem(LobbyNuggetItem);
+		Player->EnablePlayerInput();
+		bAcceptNewPlayers = true;
+		DeadPlayers.Empty();
+	}
+	else
+	{
+		if (DeadPlayers.Contains(Player) || !bAcceptNewPlayers)
+		{
+			Player->Die();
+		}
+	}
+}
+
+void AMainGameMode::Logout(AController * Exiting)
+{
+	Super::Logout(Exiting);
+
+	//Exiting->GetPawn()->Destroy();
+
+	if (GetNumOfConnectedPlayers() <= 1)
+	{
+		ReturnToLobby();
+	}
+}
+
+
 
 void AMainGameMode::SetLevelToOpen(ULevelData* LevelData)
 {
 	if (IsValid(LevelData))
 	{
 		LevelToOpen = LevelData->GetLevelName();
-		OpenLevel(LevelToOpen);
-		GameInstance->SetCurrentLevel(LevelData);
+		GetWorld()->ServerTravel(LevelToOpen);
+
+		if (IsValid(GameInstance))
+		{
+			GameInstance->SetCurrentLevel(LevelData);
+		}
 
 		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
 	}
@@ -57,7 +96,7 @@ void AMainGameMode::OnGameEnd()
 	{
 		if (!Player->GetIsDead() && !Player->bIsInWinzone)
 		{
-			Player->CallDie();
+			Player->Die();
 		}
 	}
 
@@ -126,15 +165,16 @@ void AMainGameMode::AddPlayerReady(APlayerCharacter* Player)
 	PlayersReady.Add(Player);
 }
 
-void AMainGameMode::OnPlayerDeath()
+void AMainGameMode::OnPlayerDeath(APlayerCharacter* Player)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Player died, %d remaining"), GetNumOfAlivePlayers());
+	DeadPlayers.Add(Player);
 
 	if (GetNumOfAlivePlayers() < 1)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("All players dead, game ended"));
 		MainGameState->SetTimerType(ETimerEnum::TimerPostGame);
 	}
+	UE_LOG(LogTemp, Warning, TEXT("Player died, %d remaining"), GetNumOfAlivePlayers());
 }
 
 APlayerCharacter* AMainGameMode::GiveRandomPlayerItem(UItemData* Item)

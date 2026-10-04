@@ -65,26 +65,30 @@ public:
 
 protected:
 
+	// Gay mode
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	class AMainGameMode* MainGameMode;
+
 	// Movement
 	void Move(const FInputActionValue& InputValue);
 	void Look(const FInputActionValue& InputValue);
-	UFUNCTION(Server, Reliable)
 	void OnJump();
-	UFUNCTION(NetMulticast, Reliable)
 	void HandleJump();
 
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bAllowInput;
-
+	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bCanMove;
 
 	// Sprinting
 	UFUNCTION(Server, Unreliable)
+	void Server_StartSprint();
 	void StartSprint();
 	UFUNCTION(Server, Unreliable)
+	void Server_EndSprint();
 	void EndSprint();
 	UFUNCTION(NetMulticast, Unreliable)
-	void HandleSprint();
+	void Multicast_HandleSprint();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
 	float CrouchSpeed;
@@ -98,11 +102,13 @@ protected:
 
 	// Crouching
 	UFUNCTION(Server, Unreliable)
+	void Server_StartCrouch();
 	void StartCrouch();
 	UFUNCTION(Server, Unreliable)
+	void Server_EndCrouch();
 	void EndCrouch();
 	UFUNCTION(NetMulticast, Unreliable)
-	void HandleCrouch();
+	void Multicast_HandleCrouch();
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsCrouching;
@@ -130,15 +136,13 @@ protected:
 	USoundBase* SlideSound;
 
 	// Hitting
-	UFUNCTION(Server, Reliable)
-	void ServerHit();
-	UFUNCTION(NetMulticast, Reliable)
-	void HandleHit();
-	UFUNCTION(Server, Reliable)
-	void AllowHitting();
+	void Hit();
+	void AllowHitting() { bCanHit = true; };
 
-	void TickKnockback();
-	void EndKnockback();
+	UFUNCTION(Server, Reliable)
+	void Server_Hit();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_HandleHit();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	float HitDistance;
@@ -146,8 +150,6 @@ protected:
 	float HitDelay;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	float HitForce;
-	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
-	float HitKnockbackTime;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	USoundBase* HitSound;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
@@ -158,15 +160,25 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bCanHit;
 
-	// For Knockback
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	bool bWasHit;
-
+	// Knockback
+	void TickKnockback(float DeltaTime);
+	UFUNCTION(Server, Reliable)
+	void Server_Knockback(FVector NewHitDirection, float NewKnockbackForce);
+	UPROPERTY(Replicated)
 	float KnockbackForce;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitKnockbackTime;
+	UPROPERTY(Replicated)
+	float CurrentKnockbackTime;
+	UPROPERTY(Replicated)
+	bool bShouldDealKB;
 
 	// Health
-	UFUNCTION(BlueprintImplementableEvent)
-	void Die();
+	UFUNCTION(Server, Reliable)
+	void Server_SubtractHealth(int32 Health);
+	UFUNCTION(Server, Reliable)
+	void Server_Die();
+
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	int32 MaxHealth;
@@ -176,10 +188,14 @@ protected:
 	bool bIsDead;
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
 	bool bCanTakeDamage;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
+	TSubclassOf<APawn> SpectatorPawn;
 
 	// Items
 	UFUNCTION(NetMulticast, Reliable)
-	void SetEquippedItem_Multicast(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr);
+	void Multicast_SetEquippedItem(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr);
+	UFUNCTION(Server, Reliable)
+	void Server_SetEquippedItem(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr);
 
 	UPROPERTY(Replicated, BlueprintReadWrite, EditDefaultsOnly)
 	UItemData* ItemEquipped;
@@ -188,8 +204,9 @@ protected:
 	USoundBase* ItemEquippedSound;
 
 	// Interacting
-	UFUNCTION(Server, Reliable)
 	void Interact();
+	UFUNCTION(Server, Reliable)
+	void Server_Interact();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Interacting")
 	float InteractRange;
@@ -198,6 +215,8 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bIsSafeFromStatue;
 
+	UFUNCTION(Server, Reliable)
+	void Server_SetPlayerScore(float NewScore);
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	float PlayerScore;
 
@@ -205,29 +224,29 @@ protected:
 	UItemData* StickTagItem;
 
 	// Heartbeat
-	UFUNCTION(Server, Reliable)
 	void SendHeartbeatToServer();
+	UFUNCTION(Server, Reliable)
+	void Server_SendHeartbeatToServer();
 
 	int32 NumOfMissedHeartbeats;
 
 public:
 
 	// Health
-	UFUNCTION(Server, Reliable, BlueprintCallable)
+	UFUNCTION(BlueprintCallable)
 	void SubtractHealth(int32 Health);
-	
-	UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-	void CallDie();
+	UFUNCTION(BlueprintCallable)
+	void Die();
 
 	// Equipped Items
-	UFUNCTION(Server, Reliable, BlueprintCallable)
+	UFUNCTION(BlueprintCallable)
 	void SetEquippedItem(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr);
 
 	UFUNCTION(BlueprintCallable, Category = "Items")
 	UItemData* GetEquippedItem() const { return ItemEquipped; }
 
 	// Player Score
-	UFUNCTION(Server, Reliable, BlueprintCallable)
+	UFUNCTION(BlueprintCallable)
 	void SetPlayerScore(float NewScore);
 
 	// Player Score
@@ -238,7 +257,7 @@ public:
 	bool GetIsDead() const { return bIsDead; }
 
 	// Add Knockback
-	void StartKnockback(FVector NewHitDirection, float NewKnockbackForce);
+	void Knockback(FVector NewHitDirection, float NewKnockbackForce);
 
 	// Input
 	UFUNCTION(BlueprintCallable)

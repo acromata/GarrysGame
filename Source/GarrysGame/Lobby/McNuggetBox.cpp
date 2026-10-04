@@ -79,7 +79,7 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 		Player->SetEquippedItem(NuggetItem);
 
 		// Play SFX at lower pitch
-		PlaySFXForClients(0.8);
+		PlaySFXForClients(0.8f);
 	}
 }
 

@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameModeBase.h"
-#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "MainGameMode.generated.h"
 
 
@@ -16,6 +15,8 @@ protected:
 
 	virtual void BeginPlay() override;
 
+	virtual void Logout(AController* Exiting) override;
+
 	// Player
 	UFUNCTION(BlueprintCallable)
 	void ReturnToLobby();
@@ -28,20 +29,19 @@ protected:
 	TArray<APlayerCharacter*> PlayersReady;
 	UPROPERTY(BlueprintReadWrite)
 	TArray<APlayerCharacter*> PlayersToLoadInMinigame;
+	UPROPERTY(BlueprintReadOnly)
+	TArray<APlayerCharacter*> DeadPlayers;
 	UPROPERTY(BlueprintReadWrite)
 	bool bAcceptNewPlayers;
 
 	// Level
-	UFUNCTION(BlueprintImplementableEvent)
-	void OpenLevel(const FString& Level);
-
 	void SetCurrentLevel(ULevelData* Data);
 
 	FString LevelToOpen;
 
 	// Game instance
 	UPROPERTY(BlueprintReadWrite)
-	UGarrysGame_GameInstance* GameInstance;
+	class UGarrysGame_GameInstance* GameInstance;
 
 	// Game State
 	UPROPERTY(BlueprintReadWrite)
@@ -55,6 +55,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Heartbeat")
 	FName HeartbeatDisconnectMapName;
 
+	UPROPERTY(EditAnywhere, Category = "Lobby")
+	UItemData* LobbyNuggetItem;
+
 public:
 
 	// Levels
@@ -64,12 +67,11 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void OpenRandomLevel();
 
-	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable)
-	void CheckIfInLobby(APlayerCharacter* Player);
+	void OnPlayerStart(APlayerCharacter* Player);
 
 	// Players
 	UFUNCTION(BlueprintCallable)
-	void OnPlayerDeath();
+	void OnPlayerDeath(APlayerCharacter* Player);
 
 	UFUNCTION(BlueprintCallable)
 	TArray<APlayerCharacter*> GetConnectedPlayers();
@@ -105,4 +107,7 @@ public:
 	// Player with stick
 	UPROPERTY(BlueprintReadWrite)
 	APlayerCharacter* PlayerTagged;
+
+	// Game Instance
+	void SetGameInstance(class UGarrysGame_GameInstance* GI) { GameInstance = GI; }
 };

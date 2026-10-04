@@ -1,5 +1,7 @@
 #include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
+#include "GarrysGame/Core/GameMode/MainGameMode.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
 
 void UGarrysGame_GameInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {

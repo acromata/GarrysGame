@@ -62,34 +62,29 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Movement
-	bCanMove = true;
-	bAllowInput = false;
-
-	// Speeds
-	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-	GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
-	CurrentSlideForce = SlideForce;
-
-	// Health
-	CurrentHealth = MaxHealth;
-
-	// Send a heartbeat to server
-	FTimerHandle HeartbeatTimerHandle;
-	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &APlayerCharacter::SendHeartbeatToServer, 10.f, true);
-
-	// Check if in lobby
 	if (HasAuthority())
 	{
-		AMainGameMode* GameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
-		if (IsValid(GameMode))
+		// Movement
+		bCanMove = true;
+		bAllowInput = false;
+
+		// Speeds
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+		GetCharacterMovement()->MaxWalkSpeedCrouched = CrouchSpeed;
+		CurrentSlideForce = SlideForce;
+
+		// Health
+		CurrentHealth = MaxHealth;
+
+		// Send a heartbeat to server
+		FTimerHandle HeartbeatTimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &APlayerCharacter::SendHeartbeatToServer, 10.f, true);
+
+		// Check if in lobby
+		MainGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
+		if (IsValid(MainGameMode))
 		{
-			GameMode->CheckIfInLobby(this);
-			UE_LOG(LogTemp, Warning, TEXT("Lobby checked"));
-		}
-		else
-		{
-			UE_LOG(LogTemp, Warning, TEXT("Lobby check failed"));
+			MainGameMode->OnPlayerStart(this);
 		}
 	}
 }
@@ -99,7 +94,10 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	TickKnockback();
+	if (HasAuthority())
+	{
+		TickKnockback(DeltaTime);
+	}
 }
 
 // Called to bind functionality to input
@@ -133,7 +131,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 		Input->BindAction(CrouchAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartCrouch);
 		Input->BindAction(CrouchAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndCrouch);
 
-		Input->BindAction(HitAction, ETriggerEvent::Triggered, this, &APlayerCharacter::ServerHit);
+		Input->BindAction(HitAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Hit);
 
 		Input->BindAction(InteractAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Interact);
 	}
@@ -145,6 +143,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 	// Movement
 	DOREPLIFETIME(APlayerCharacter, bAllowInput);
+	DOREPLIFETIME(APlayerCharacter, bCanMove);
 
 	// Health
 	DOREPLIFETIME(APlayerCharacter, CurrentHealth);
@@ -167,7 +166,11 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
 	DOREPLIFETIME(APlayerCharacter, bCanHit);
-	DOREPLIFETIME(APlayerCharacter, bWasHit);
+
+	// Knockback
+	DOREPLIFETIME(APlayerCharacter, bShouldDealKB);
+	DOREPLIFETIME(APlayerCharacter, CurrentKnockbackTime);
+	DOREPLIFETIME(APlayerCharacter, KnockbackForce);
 
 	// Items
 	DOREPLIFETIME(APlayerCharacter, ItemEquipped);
@@ -175,6 +178,9 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Minigames
 	DOREPLIFETIME(APlayerCharacter, bIsSafeFromStatue);
 	DOREPLIFETIME(APlayerCharacter, PlayerScore);
+
+	// Gamemode
+	DOREPLIFETIME(APlayerCharacter, MainGameMode);
 }
 
 #pragma region Movement
@@ -183,7 +189,7 @@ void APlayerCharacter::Move(const FInputActionValue& InputValue)
 {
 	FVector2D InputVector = InputValue.Get<FVector2D>();
 
-	if (IsValid(Controller) && bCanMove && bAllowInput)
+	if (IsValid(GetController()) && bCanMove && bAllowInput)
 	{
 		// Get forward direction
 		const FRotator Rotation = Controller->GetControlRotation();
@@ -202,14 +208,14 @@ void APlayerCharacter::Look(const FInputActionValue& InputValue)
 {
 	FVector2D InputVector = InputValue.Get<FVector2D>();
 
-	if (IsValid(Controller))
+	if (IsValid(GetController()))
 	{
 		AddControllerYawInput(InputVector.X);
 		AddControllerPitchInput(InputVector.Y);
 	}
 }
 
-void APlayerCharacter::OnJump_Implementation()
+void APlayerCharacter::OnJump()
 {
 	if (bAllowInput)
 	{
@@ -219,64 +225,81 @@ void APlayerCharacter::OnJump_Implementation()
 		}
 		else
 		{
-			HandleJump();
+			ACharacter::Jump();
 		}
 	}
-}
-
-void APlayerCharacter::HandleJump_Implementation()
-{
-	ACharacter::Jump();
 }
 
 #pragma endregion
 
 #pragma region Sprint
 
-void APlayerCharacter::StartSprint_Implementation()
+void APlayerCharacter::StartSprint()
 {
-	if (GetVelocity().Size() >= 0.5 && (GetCharacterMovement()->IsMovingOnGround() || bIsSliding))
+	if (!HasAuthority())
+	{
+		Server_StartSprint();
+		return;
+	}
+
+	if (GetVelocity().Size() >= 0.5 && !bIsCrouched && (GetCharacterMovement()->IsMovingOnGround() || bIsSliding))
 	{
 		bIsRunning = true;
 	}
 	else
 	{
-		bIsRunning = false;
+		EndSprint();
 	}
 
-	HandleSprint();
+	Multicast_HandleSprint();
 }
 
-void APlayerCharacter::EndSprint_Implementation()
+void APlayerCharacter::Server_StartSprint_Implementation()
 {
+	StartSprint();
+}
+
+void APlayerCharacter::EndSprint()
+{
+	if (!HasAuthority())
+	{
+		Server_EndSprint();
+		return;
+	}
+
 	bIsRunning = false;
-	HandleSprint();
+	Multicast_HandleSprint();
 }
 
-void APlayerCharacter::HandleSprint_Implementation()
+void APlayerCharacter::Server_EndSprint_Implementation()
 {
-	if (bIsRunning && !bIsCrouched)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
-	}
-	else
-	{
-		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
-	}
+	EndSprint();
 }
+
+void APlayerCharacter::Multicast_HandleSprint_Implementation()
+{
+	GetCharacterMovement()->MaxWalkSpeed = bIsRunning ? RunSpeed : WalkSpeed;
+}
+
 
 #pragma endregion
 
 #pragma region Crouch
 
-void APlayerCharacter::StartCrouch_Implementation()
+void APlayerCharacter::StartCrouch()
 {
+	if (!HasAuthority())
+	{
+		Server_StartCrouch();
+		return;
+	}
+
 	if (GetCharacterMovement()->CanCrouchInCurrentState() && bAllowInput)
 	{
 		bIsCrouching = true;
 
 		if ((bIsRunning || GetVelocity().Size() > WalkSpeed + 50.f) && CurrentSlideForce > CrouchSpeed && // Check if fast enough
-		(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
+			(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
 		{
 			// Allow Sliding
 			bIsSliding = true;
@@ -307,7 +330,7 @@ void APlayerCharacter::StartCrouch_Implementation()
 			if (bIsAwaitingSlideJump)
 			{
 				SlideDirection.Z = JumpForceWhileSliding;
-				
+
 			}
 			else
 			{
@@ -326,18 +349,34 @@ void APlayerCharacter::StartCrouch_Implementation()
 		bCanSlideJump = false;
 	}
 
-	HandleCrouch();
+	Multicast_HandleCrouch();
 }
 
-void APlayerCharacter::EndCrouch_Implementation()
+void APlayerCharacter::Server_StartCrouch_Implementation()
 {
+	StartCrouch();
+}
+
+void APlayerCharacter::EndCrouch()
+{
+	if (!HasAuthority())
+	{
+		Server_StartCrouch();
+		return;
+	}
+
 	bIsCrouching = false;
 	bIsSliding = false;
 	bCanSlideJump = false;
-	HandleCrouch();
+	Multicast_HandleCrouch();
 }
 
-void APlayerCharacter::HandleCrouch_Implementation()
+void APlayerCharacter::Server_EndCrouch_Implementation()
+{
+	EndCrouch();
+}
+
+void APlayerCharacter::Multicast_HandleCrouch_Implementation()
 {
 	// Crouch
 	if (bIsCrouching)
@@ -392,8 +431,14 @@ void APlayerCharacter::HandleCrouch_Implementation()
 
 #pragma region Hitting
 
-void APlayerCharacter::ServerHit_Implementation()
+void APlayerCharacter::Hit()
 {
+	if (!HasAuthority())
+	{
+		Server_Hit();
+		return;
+	}
+
 	if (bCanHit && bAllowInput)
 	{
 		// Hit Delay
@@ -427,7 +472,7 @@ void APlayerCharacter::ServerHit_Implementation()
 				if (IsValid(GetEquippedItem()) && GetEquippedItem()->GetItemType() == EItemType::TagItem)
 				{
 					// If item is tag item, do extra knockback
-					HitPlayer->StartKnockback(NewHitDirection, HitForce * GetEquippedItem()->GetItemValue());
+					HitPlayer->Knockback(NewHitDirection, HitForce * GetEquippedItem()->GetItemValue());
 					HitPlayer->SetEquippedItem(StickTagItem);
 					SetEquippedItem(nullptr);
 
@@ -439,16 +484,21 @@ void APlayerCharacter::ServerHit_Implementation()
 				}
 				else
 				{
-					HitPlayer->StartKnockback(NewHitDirection, HitForce);
+					HitPlayer->Knockback(NewHitDirection, HitForce);
 				}
 			}
 		}
 
-		HandleHit();
+		Multicast_HandleHit();
 	}
 }
 
-void APlayerCharacter::HandleHit_Implementation()
+void APlayerCharacter::Server_Hit_Implementation()
+{
+	Hit();
+}
+
+void APlayerCharacter::Multicast_HandleHit_Implementation()
 {
 	// Play sound
 	UGameplayStatics::PlaySoundAtLocation(GetWorld(), HitSound, GetActorLocation(), GetActorRotation(), 1.5f);
@@ -462,40 +512,51 @@ void APlayerCharacter::HandleHit_Implementation()
 
 }
 
-void APlayerCharacter::AllowHitting_Implementation()
+void APlayerCharacter::Knockback(FVector NewHitDirection, float NewKnockbackForce)
 {
-	bCanHit = true;
-}
+	if (!HasAuthority())
+	{
+		Server_Knockback(NewHitDirection, NewKnockbackForce);
+		return;
+	}
 
-void APlayerCharacter::StartKnockback(FVector NewHitDirection, float NewKnockbackForce)
-{
-	bWasHit = true;
 	HitDirection = NewHitDirection;
 	KnockbackForce = NewKnockbackForce;
-
-	FTimerHandle EndKnockbackTimer;
-	GetWorld()->GetTimerManager().SetTimer(EndKnockbackTimer, this, &APlayerCharacter::EndKnockback, HitKnockbackTime);
+	CurrentKnockbackTime = 0;
+	bShouldDealKB = true;
 }
 
-void APlayerCharacter::TickKnockback()
+void APlayerCharacter::Server_Knockback_Implementation(FVector NewHitDirection, float NewKnockbackForce)
 {
-	if (bWasHit == true)
+	Knockback(NewHitDirection, NewKnockbackForce);
+}
+
+void APlayerCharacter::TickKnockback(float DeltaTime)
+{
+	if (bShouldDealKB == true)
 	{
 		LaunchCharacter(HitDirection * KnockbackForce, true, false);
-	}
-}
 
-void APlayerCharacter::EndKnockback()
-{
-	bWasHit = false;
+		CurrentKnockbackTime += DeltaTime;
+		if (CurrentKnockbackTime >= HitKnockbackTime)
+		{
+			bShouldDealKB = false;
+		}
+	}
 }
 
 #pragma endregion
 
 #pragma region Health
 
-void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
+void APlayerCharacter::SubtractHealth(int32 Health)
 {
+	if (!HasAuthority())
+	{
+		Server_SubtractHealth(Health);
+		return;
+	}
+
 	if (bCanTakeDamage)
 	{
 		CurrentHealth = FMath::Clamp(CurrentHealth - Health, 0, MaxHealth);
@@ -504,47 +565,91 @@ void APlayerCharacter::SubtractHealth_Implementation(int32 Health)
 	if (CurrentHealth <= 0)
 	{
 		// Die
-		CallDie();
+		Die();
 	}
 }
 
-void APlayerCharacter::CallDie_Implementation()
+void APlayerCharacter::Die()
 {
-	// Call on blueprint
+	if (!HasAuthority())
+	{
+		Server_Die();
+		return;
+	}
+
+	if (!bIsDead)
+	{
+		bIsDead = true;
+		MainGameMode->OnPlayerDeath(this);
+		if (SpectatorPawn)
+		{
+			APawn* Spectator = GetWorld()->SpawnActor<APawn>(SpectatorPawn, GetActorTransform());
+			if (IsValid(Spectator))
+			{
+				GetController()->Possess(Spectator);
+				GetMesh()->SetSimulatePhysics(true);
+			}
+		}
+	}
+}
+
+void APlayerCharacter::Server_Die_Implementation()
+{
 	Die();
+}
+
+void APlayerCharacter::Server_SubtractHealth_Implementation(int32 Health)
+{
+	SubtractHealth(Health);
 }
 
 #pragma endregion
 
 #pragma region Item Equip
 
-void APlayerCharacter::SetEquippedItem_Implementation(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr)
+void APlayerCharacter::SetEquippedItem(UItemData* Item, APlayerCharacter* ReceivingPlayer)
 {
-	SetEquippedItem_Multicast(Item, ReceivingPlayer);
-}
-
-void APlayerCharacter::SetEquippedItem_Multicast_Implementation(UItemData* Item, APlayerCharacter* ReceivingPlayer = nullptr)
-{
+	if (!HasAuthority())
+	{
+		Server_SetEquippedItem(Item, ReceivingPlayer);
+		return;
+	}
+	
 	if (IsValid(Item))
 	{
 		ItemEquipped = Item;
 		ItemMesh->SetStaticMesh(ItemEquipped->GetItemMesh());
-		UGameplayStatics::PlaySoundAtLocation(GetWorld(), ItemEquippedSound, GetActorLocation(), GetActorRotation(), 1.0f);
+		Multicast_SetEquippedItem(Item, ReceivingPlayer);
 	}
 	else
 	{
 		ItemEquipped = nullptr;
 		ItemMesh->SetStaticMesh(nullptr);
 	}
-	
+}
+
+void APlayerCharacter::Server_SetEquippedItem_Implementation(UItemData* Item, APlayerCharacter* ReceivingPlayer)
+{
+	SetEquippedItem(Item, ReceivingPlayer);
+}
+
+void APlayerCharacter::Multicast_SetEquippedItem_Implementation(UItemData* Item, APlayerCharacter* ReceivingPlayer)
+{
+	UGameplayStatics::PlaySoundAtLocation(GetWorld(), ItemEquippedSound, GetActorLocation(), GetActorRotation(), 1.0f);
 }
 
 #pragma endregion
 
 #pragma region Interact
 
-void APlayerCharacter::Interact_Implementation()
+void APlayerCharacter::Interact()
 {
+	if (!HasAuthority())
+	{
+		Server_Interact();
+		return;
+	}
+
 	TArray<FHitResult> HitResults;
 
 	bool bHit = GetWorld()->SweepMultiByChannel(HitResults, GetActorLocation(), GetActorLocation(),
@@ -567,13 +672,29 @@ void APlayerCharacter::Interact_Implementation()
 	}
 }
 
+void APlayerCharacter::Server_Interact_Implementation()
+{
+	Interact();
+}
+
 #pragma endregion
 
 #pragma region Minigames
 
-void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
+void APlayerCharacter::SetPlayerScore(float NewScore)
 {
+	if (!HasAuthority())
+	{
+		Server_SetPlayerScore(NewScore);
+		return;
+	}
+
 	PlayerScore = NewScore;
+}
+
+void APlayerCharacter::Server_SetPlayerScore_Implementation(float NewScore)
+{
+	SetPlayerScore(NewScore);
 }
 
 #pragma endregion
@@ -581,13 +702,24 @@ void APlayerCharacter::SetPlayerScore_Implementation(float NewScore)
 
 #pragma region Server Heartbeat
 
-void APlayerCharacter::SendHeartbeatToServer_Implementation()
+void APlayerCharacter::SendHeartbeatToServer()
 {
+	if (!HasAuthority())
+	{
+		Server_SendHeartbeatToServer();
+		return;
+	}
+
 	AMainGameMode* GameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
 	if (IsValid(GameMode))
 	{
 		GameMode->ReceiveHeartbeat(this);
 	}
+}
+
+void APlayerCharacter::Server_SendHeartbeatToServer_Implementation()
+{
+	SendHeartbeatToServer();
 }
 
 #pragma endregion
