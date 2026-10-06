@@ -41,6 +41,7 @@ protected:
 	UItemData* NuggetItem;
 
 	class AGarrysGameGameState* MainGameState;
+	class AMainGameMode* MainGameMode;
 
 public:
 

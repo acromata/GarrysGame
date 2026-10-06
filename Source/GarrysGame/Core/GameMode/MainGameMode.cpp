@@ -27,12 +27,17 @@ void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
 		Player->EnablePlayerInput();
 		bAcceptNewPlayers = true;
 		DeadPlayers.Empty();
+
+		UE_LOG(LogTemp, Warning, TEXT("Player Joined lobby"));
 	}
 	else
 	{
+		UE_LOG(LogTemp, Warning, TEXT("Player joined game"));
+
 		if (DeadPlayers.Contains(Player) || !bAcceptNewPlayers)
 		{
 			Player->Die();
+			UE_LOG(LogTemp, Warning, TEXT("New player joined dead"));
 		}
 	}
 }
@@ -57,13 +62,12 @@ void AMainGameMode::SetLevelToOpen(ULevelData* LevelData)
 	{
 		LevelToOpen = LevelData->GetLevelName();
 		GetWorld()->ServerTravel(LevelToOpen);
+		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
 
 		if (IsValid(GameInstance))
 		{
 			GameInstance->SetCurrentLevel(LevelData);
 		}
-
-		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
 	}
 }
 

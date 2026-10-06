@@ -361,7 +361,7 @@ void APlayerCharacter::EndCrouch()
 {
 	if (!HasAuthority())
 	{
-		Server_StartCrouch();
+		Server_EndCrouch();
 		return;
 	}
 

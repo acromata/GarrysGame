@@ -33,13 +33,11 @@ void AMcNuggetBox::BeginPlay()
 
 	// Get Game state
 	MainGameState = Cast<AGarrysGameGameState>(UGameplayStatics::GetGameState(GetWorld()));
+	MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 }
 
 void AMcNuggetBox::Interact(APlayerCharacter* Player)
 {
-	// Get game mode
-	AMainGameMode* MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
-
 	// Check if player has nugget
 	if (IsValid(Player->GetEquippedItem()) && Player->GetEquippedItem()->GetItemName() == "Nugget")
 	{
