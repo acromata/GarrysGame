@@ -9,6 +9,10 @@ void AMainGameMode::BeginPlay()
 {
 	MainGameState = Cast<AGarrysGameGameState>(GameState);
 	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
+	if (IsValid(GameInstance) && IsValid(MainGameState) && IsValid(GameInstance->GetCurrentLevel()))
+	{
+		MainGameState->CurrentLevelData = GameInstance->GetCurrentLevel();
+	}
 
 	// Check for heartbeats
 	FTimerHandle HeartbeatTimerHandle;
@@ -16,7 +20,6 @@ void AMainGameMode::BeginPlay()
 
 	bUseSeamlessTravel = true;
 	bAcceptNewPlayers = true;
-
 }
 
 void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
@@ -26,15 +29,19 @@ void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
 		Player->SetEquippedItem(LobbyNuggetItem);
 		Player->EnablePlayerInput();
 		bAcceptNewPlayers = true;
-		DeadPlayers.Empty();
 
+		if (IsValid(GameInstance))
+		{
+			GameInstance->PlayersDead.Empty();
+		}
+		
 		UE_LOG(LogTemp, Warning, TEXT("Player Joined lobby"));
 	}
 	else
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Player joined game"));
 
-		if (DeadPlayers.Contains(Player) || !bAcceptNewPlayers)
+		if (GameInstance->PlayersDead.Contains(Player) || !bAcceptNewPlayers)
 		{
 			Player->Die();
 			UE_LOG(LogTemp, Warning, TEXT("New player joined dead"));
@@ -42,16 +49,14 @@ void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
 	}
 }
 
-void AMainGameMode::Logout(AController * Exiting)
+void AMainGameMode::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
 
-	//Exiting->GetPawn()->Destroy();
-
-	if (GetNumOfConnectedPlayers() <= 1)
-	{
-		ReturnToLobby();
-	}
+	//if (GetNumOfConnectedPlayers() <= 1)
+	//{
+	//	ReturnToLobby();
+	//}
 }
 
 
@@ -61,13 +66,15 @@ void AMainGameMode::SetLevelToOpen(ULevelData* LevelData)
 	if (IsValid(LevelData))
 	{
 		LevelToOpen = LevelData->GetLevelName();
-		GetWorld()->ServerTravel(LevelToOpen);
-		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
+		MainGameState->CurrentLevelData = LevelData;
 
 		if (IsValid(GameInstance))
 		{
 			GameInstance->SetCurrentLevel(LevelData);
 		}
+
+		GetWorld()->ServerTravel(LevelToOpen);
+		UE_LOG(LogTemp, Warning, TEXT("Opening level %s"), *LevelToOpen);
 	}
 }
 
@@ -163,15 +170,12 @@ TArray<APlayerCharacter*> AMainGameMode::GetConnectedPlayers()
 	return PlayerCharacters;
 }
 
-void AMainGameMode::AddPlayerReady(APlayerCharacter* Player)
-{
-	NumOfPlayersReady++;
-	PlayersReady.Add(Player);
-}
-
 void AMainGameMode::OnPlayerDeath(APlayerCharacter* Player)
 {
-	DeadPlayers.Add(Player);
+	if (IsValid(GameInstance))
+	{
+		GameInstance->PlayersDead.Add(Player);
+	}
 
 	if (GetNumOfAlivePlayers() < 1)
 	{
@@ -184,12 +188,13 @@ void AMainGameMode::OnPlayerDeath(APlayerCharacter* Player)
 APlayerCharacter* AMainGameMode::GiveRandomPlayerItem(UItemData* Item)
 {
 	APlayerCharacter* Player;
+	TArray<APlayerCharacter*> PReady = GetAlivePlayers();
 	while (true)
 	{
-		int32 RandNum = FMath::RandRange(0, PlayersReady.Num() - 1);
-		if (PlayersReady.IsValidIndex(RandNum) && IsValid(PlayersReady[RandNum]))
+		int32 RandNum = FMath::RandRange(0, PReady.Num() - 1);
+		if (PReady.IsValidIndex(RandNum) && IsValid(PReady[RandNum]))
 		{
-			Player = PlayersReady[RandNum];
+			Player = PReady[RandNum];
 			break;
 		}
 	}

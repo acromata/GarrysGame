@@ -33,6 +33,7 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 
 	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerTime);
 	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerEnum);
+	DOREPLIFETIME(AGarrysGameGameState, CurrentLevelData);
 }
 
 #pragma endregion
@@ -42,14 +43,10 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 {
 	// Get minigame time from minigame data
-	int32 MinigameTimeLength;
+	int32 MinigameTimeLength = 62;
 	if (IsValid(GameInstance) && IsValid(GameInstance->GetCurrentLevel()) && IsValid(GameInstance->GetCurrentLevel()->GetMinigameData()))
 	{
 		MinigameTimeLength = GameInstance->GetCurrentLevel()->GetMinigameData()->GetMinigameTime();
-	}
-	else
-	{
-		MinigameTimeLength = 62;
 	}
 
 	// Return time based off current enum

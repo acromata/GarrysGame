@@ -8,4 +8,5 @@ void UGarrysGame_GameInstance::GetLifetimeReplicatedProps(TArray<FLifetimeProper
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UGarrysGame_GameInstance, CurrentLevelData);
+	DOREPLIFETIME(UGarrysGame_GameInstance, PlayersDead);
 }

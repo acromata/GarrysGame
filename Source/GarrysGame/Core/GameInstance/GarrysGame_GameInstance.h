@@ -15,10 +15,12 @@ protected:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
+public:
+
 	UPROPERTY(Replicated)
 	ULevelData* CurrentLevelData;
-
-public:
+	UPROPERTY(Replicated)
+	TArray<APlayerCharacter*> PlayersDead;
 
 	UFUNCTION(BlueprintCallable)
 	void SetCurrentLevel(ULevelData* Level) { CurrentLevelData = Level; }

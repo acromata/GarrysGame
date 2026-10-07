@@ -114,6 +114,8 @@ protected:
 	bool bIsCrouching;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsSliding;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bhasPlayedSlideSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float SlideForce;

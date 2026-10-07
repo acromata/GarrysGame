@@ -38,6 +38,12 @@ void AMcNuggetBox::BeginPlay()
 
 void AMcNuggetBox::Interact(APlayerCharacter* Player)
 {
+	if (!HasAuthority())
+	{
+		Server_Interact(Player);
+		return;
+	}
+
 	// Check if player has nugget
 	if (IsValid(Player->GetEquippedItem()) && Player->GetEquippedItem()->GetItemName() == "Nugget")
 	{
@@ -79,6 +85,11 @@ void AMcNuggetBox::Interact(APlayerCharacter* Player)
 		// Play SFX at lower pitch
 		PlaySFXForClients(0.8f);
 	}
+}
+
+void AMcNuggetBox::Server_Interact_Implementation(APlayerCharacter* Player)
+{
+	Interact(Player);
 }
 
 void AMcNuggetBox::PlaySFXForClients_Implementation(float Pitch)

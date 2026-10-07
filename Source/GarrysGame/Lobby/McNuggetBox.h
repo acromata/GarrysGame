@@ -27,6 +27,9 @@ protected:
 
 	void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const;
 
+	UFUNCTION(Server, Reliable)
+	void Server_Interact(APlayerCharacter* Player);
+
 	UFUNCTION(NetMulticast, Reliable)
 	void PlaySFXForClients(float Pitch = 1.f);
 

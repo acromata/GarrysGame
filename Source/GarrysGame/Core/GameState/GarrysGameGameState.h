@@ -100,4 +100,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	TArray<ULevelData*> GetLevels() const { return Levels; }
+
+	UPROPERTY(Replicated, BlueprintReadWrite)
+	ULevelData* CurrentLevelData;
 };

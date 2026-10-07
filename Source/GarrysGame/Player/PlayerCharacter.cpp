@@ -12,6 +12,7 @@
 #include "../Interfaces/InteractableInterface.h"
 #include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGame/Core/GameMode/MainGameMode.h"
+#include "Components/CapsuleComponent.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -42,6 +43,7 @@ APlayerCharacter::APlayerCharacter()
 	// Slide
 	SlideForce = 1000.f;
 	CounterSlideForce = 1.f;
+	bhasPlayedSlideSound = false;
 
 	// Hitting
 	bCanHit = true;
@@ -162,6 +164,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, bIsSliding);
 	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
 	DOREPLIFETIME(APlayerCharacter, bCanSlideJump);
+	DOREPLIFETIME(APlayerCharacter, bhasPlayedSlideSound);
 
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
@@ -296,8 +299,10 @@ void APlayerCharacter::StartCrouch()
 
 	if (GetCharacterMovement()->CanCrouchInCurrentState() && bAllowInput)
 	{
+		// Crouch
 		bIsCrouching = true;
 
+		// Slide
 		if ((bIsRunning || GetVelocity().Size() > WalkSpeed + 50.f) && CurrentSlideForce > CrouchSpeed && // Check if fast enough
 			(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
 		{
@@ -339,6 +344,7 @@ void APlayerCharacter::StartCrouch()
 		}
 		else
 		{
+			// Unslide
 			bIsSliding = false;
 		}
 	}
@@ -349,6 +355,16 @@ void APlayerCharacter::StartCrouch()
 		bCanSlideJump = false;
 	}
 
+	// This should be moved into its own function
+	if (!bIsSliding)
+	{
+		bCanMove = true;
+		bUseControllerRotationYaw = true;
+		bIsAwaitingSlideJump = false;
+		bCanSlideJump = false;
+	}
+
+	// Call Sound
 	Multicast_HandleCrouch();
 }
 
@@ -365,10 +381,17 @@ void APlayerCharacter::EndCrouch()
 		return;
 	}
 
+	// Uncrouch
 	bIsCrouching = false;
+	Multicast_HandleCrouch();
+
+	// Reset slide
+	CurrentSlideForce = SlideForce;
 	bIsSliding = false;
 	bCanSlideJump = false;
-	Multicast_HandleCrouch();
+	bCanMove = true;
+	bUseControllerRotationYaw = true;
+	bIsAwaitingSlideJump = false;
 }
 
 void APlayerCharacter::Server_EndCrouch_Implementation()
@@ -379,23 +402,10 @@ void APlayerCharacter::Server_EndCrouch_Implementation()
 void APlayerCharacter::Multicast_HandleCrouch_Implementation()
 {
 	// Crouch
-	if (bIsCrouching)
-	{
-		// Crouch
-		Crouch();
-	}
-	else
-	{
-		// Uncrouch
-		UnCrouch();
+	bIsCrouching ? Crouch() : UnCrouch();
 
-		// Reset slide
-		CurrentSlideForce = SlideForce;
-	}
-
-	static bool hasPlayedSlideSound;
 	// Slide
-	if (bIsSliding && bIsCrouched)
+	if (bIsSliding)
 	{
 		// Add Forward Force
 		LaunchCharacter(SlideDirection, true, false);
@@ -409,21 +419,20 @@ void APlayerCharacter::Multicast_HandleCrouch_Implementation()
 		// Disable jump force
 		bIsAwaitingSlideJump = false;
 
+
 		// Play Sound
-		if (!hasPlayedSlideSound)
+		if (!bhasPlayedSlideSound)
 		{
 			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
-			hasPlayedSlideSound = true;
+			bhasPlayedSlideSound = true;
 		}
+
+		// Add Forward Force
+		LaunchCharacter(SlideDirection, true, false);
 	}
 	else
 	{
-		// Unslide
-		bCanMove = true;
-		bUseControllerRotationYaw = true;
-		bIsAwaitingSlideJump = false;
-		bCanSlideJump = false;
-		hasPlayedSlideSound = false;
+		bhasPlayedSlideSound = false;
 	}
 }
 
@@ -581,6 +590,13 @@ void APlayerCharacter::Die()
 	{
 		bIsDead = true;
 		MainGameMode->OnPlayerDeath(this);
+
+		// Ragdoll
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetMesh()->SetCollisionProfileName(FName("Ragdoll"));
+		GetMesh()->SetSimulatePhysics(true);
+
+
 		if (SpectatorPawn)
 		{
 			APawn* Spectator = GetWorld()->SpawnActor<APawn>(SpectatorPawn, GetActorTransform());

@@ -22,21 +22,13 @@ protected:
 	void ReturnToLobby();
 	UFUNCTION(BlueprintCallable)
 	void OnGameEnd();
-
-	UPROPERTY(BlueprintReadWrite)
-	int32 NumOfPlayersReady;
-	UPROPERTY(BlueprintReadWrite)
-	TArray<APlayerCharacter*> PlayersReady;
-	UPROPERTY(BlueprintReadWrite)
-	TArray<APlayerCharacter*> PlayersToLoadInMinigame;
-	UPROPERTY(BlueprintReadOnly)
-	TArray<APlayerCharacter*> DeadPlayers;
 	UPROPERTY(BlueprintReadWrite)
 	bool bAcceptNewPlayers;
 
 	// Level
 	void SetCurrentLevel(ULevelData* Data);
 
+	UPROPERTY(BlueprintReadOnly)
 	FString LevelToOpen;
 
 	// Game instance
@@ -84,19 +76,6 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	int32 GetNumOfAlivePlayers() { return GetAlivePlayers().Num(); }
-
-	// Players Ready
-	UFUNCTION(BlueprintCallable)
-	int32 GetNumOfPlayersReady() const { return NumOfPlayersReady; }
-
-	UFUNCTION(BlueprintCallable)
-	TArray<APlayerCharacter*> GetPlayersReady() const { return PlayersReady; }
-
-	UFUNCTION(BlueprintCallable)
-	void AddPlayerReady(APlayerCharacter* Player);
-
-	UFUNCTION(BlueprintCallable)
-	bool IsAllPlayersReady() { return NumOfPlayersReady >= GetNumOfAlivePlayers(); }
 
 	UFUNCTION(BlueprintCallable)
 	APlayerCharacter* GiveRandomPlayerItem(UItemData* Item);
