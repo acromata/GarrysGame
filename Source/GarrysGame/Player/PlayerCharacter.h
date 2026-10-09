@@ -73,7 +73,10 @@ protected:
 	void Move(const FInputActionValue& InputValue);
 	void Look(const FInputActionValue& InputValue);
 	void OnJump();
-	void HandleJump();
+	UFUNCTION(Server, Reliable)
+	void Server_OnJump();
+	UFUNCTION(NetMulticast, Reliable)
+	void Multicast_OnJump();
 
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bAllowInput;
@@ -91,11 +94,11 @@ protected:
 	void Multicast_HandleSprint();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
-	float CrouchSpeed;
+	float CrouchSpeed = 400.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
-	float WalkSpeed;
+	float WalkSpeed = 400.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Speeds")
-	float RunSpeed;
+	float RunSpeed = 800.f;
 
 	UPROPERTY(Replicated)
 	bool bIsRunning;
@@ -110,6 +113,10 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void Multicast_HandleCrouch();
 
+	// Slide
+	void StartSlide();
+	void EndSlide();
+
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsCrouching;
 	UPROPERTY(Replicated, BlueprintReadOnly)
@@ -118,13 +125,13 @@ protected:
 	bool bhasPlayedSlideSound;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
-	float SlideForce;
+	float SlideForce = 1000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
-	float CounterSlideForce;
+	float CounterSlideForce = 1.f;
 	UPROPERTY(Replicated)
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
-	float JumpForceWhileSliding;
+	float JumpForceWhileSliding = 420.f;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
@@ -147,20 +154,26 @@ protected:
 	void Multicast_HandleHit();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
-	float HitDistance;
+	FVector HitBoxSize = FVector(20.f);
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
-	float HitDelay;
+	float HitDelay = .2f;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
-	float HitForce;
+	float HitForce = 1000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	USoundBase* HitSound;
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	UAnimMontage* HitAnimation;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitDamagePercentage = 0.1f;
+	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
+	float HitDamage = 20.f;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector HitDirection;
 	UPROPERTY(Replicated, BlueprintReadOnly)
-	bool bCanHit;
+	FVector HitLocation;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	bool bCanHit = true;
 
 	// Knockback
 	void TickKnockback(float DeltaTime);
@@ -183,13 +196,13 @@ protected:
 
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
-	int32 MaxHealth;
+	int32 MaxHealth = 100.f;
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
 	int32 CurrentHealth;
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
 	bool bIsDead;
 	UPROPERTY(Replicated, BlueprintReadWrite, Category = "Health")
-	bool bCanTakeDamage;
+	bool bCanTakeDamage = true;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
 	TSubclassOf<APawn> SpectatorPawn;
 
@@ -211,7 +224,7 @@ protected:
 	void Server_Interact();
 
 	UPROPERTY(EditDefaultsOnly, Category = "Interacting")
-	float InteractRange;
+	float InteractRange = 500.f;
 
 	// Minigames
 	UPROPERTY(Replicated, BlueprintReadWrite)

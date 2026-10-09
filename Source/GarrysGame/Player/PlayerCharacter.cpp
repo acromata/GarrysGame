@@ -13,6 +13,7 @@
 #include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGame/Core/GameMode/MainGameMode.h"
 #include "Components/CapsuleComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -31,32 +32,6 @@ APlayerCharacter::APlayerCharacter()
 	// Item Mesh
 	ItemMesh = CreateDefaultSubobject<UStaticMeshComponent>("Item");
 	ItemMesh->SetupAttachment(GetMesh(), "ItemSocket");
-
-	// Movement
-	JumpForceWhileSliding = 420.f;
-
-	// Speeds
-	CrouchSpeed = 400.f;
-	WalkSpeed = 400.f;
-	RunSpeed = 800.f;
-
-	// Slide
-	SlideForce = 1000.f;
-	CounterSlideForce = 1.f;
-	bhasPlayedSlideSound = false;
-
-	// Hitting
-	bCanHit = true;
-	HitDistance = 100.f;
-	HitDelay = 0.5f;
-	HitForce = 1000.f;
-
-	// Health
-	MaxHealth = 100.f;
-	bCanTakeDamage = true;
-
-	// Interactable
-	InteractRange = 500.f;
 }
 
 // Called when the game starts or when spawned
@@ -169,6 +144,7 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
 	DOREPLIFETIME(APlayerCharacter, bCanHit);
+	DOREPLIFETIME(APlayerCharacter, HitLocation);
 
 	// Knockback
 	DOREPLIFETIME(APlayerCharacter, bShouldDealKB);
@@ -220,6 +196,12 @@ void APlayerCharacter::Look(const FInputActionValue& InputValue)
 
 void APlayerCharacter::OnJump()
 {
+	if (!HasAuthority())
+	{
+		Server_OnJump();
+		return;
+	}
+
 	if (bAllowInput)
 	{
 		if (bCanSlideJump)
@@ -228,9 +210,19 @@ void APlayerCharacter::OnJump()
 		}
 		else
 		{
-			ACharacter::Jump();
+			Multicast_OnJump();
 		}
 	}
+}
+
+void APlayerCharacter::Multicast_OnJump_Implementation()
+{
+	Jump();
+}
+
+void APlayerCharacter::Server_OnJump_Implementation()
+{
+	OnJump();
 }
 
 #pragma endregion
@@ -306,65 +298,20 @@ void APlayerCharacter::StartCrouch()
 		if ((bIsRunning || GetVelocity().Size() > WalkSpeed + 50.f) && CurrentSlideForce > CrouchSpeed && // Check if fast enough
 			(GetCharacterMovement()->IsMovingOnGround() || bIsSliding)) // Check if grounded
 		{
-			// Allow Sliding
-			bIsSliding = true;
-
-			// Check if grounded
-			FHitResult HitResult;
-			FCollisionQueryParams CollisionParams;
-			CollisionParams.AddIgnoredActor(this);
-
-			FVector StartLocation = GetMesh()->GetSocketLocation("GroundSocketTop");
-			FVector EndLocation = GetMesh()->GetSocketLocation("GroundSocketBottom");
-
-			// The line trace
-			bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, GetActorLocation(), EndLocation, ECC_Visibility, CollisionParams);
-
-			// If grounded, allow slide jump
-			if (bIsHit)
-			{
-				bCanSlideJump = true;
-			}
-			else
-			{
-				bCanSlideJump = false;
-			}
-
-			// Get Slide Direction
-			SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
-			if (bIsAwaitingSlideJump)
-			{
-				SlideDirection.Z = JumpForceWhileSliding;
-
-			}
-			else
-			{
-				SlideDirection.Z = 0.f;
-			}
+			StartSlide();
 		}
 		else
 		{
 			// Unslide
-			bIsSliding = false;
+			EndSlide();
 		}
 	}
 	else
 	{
 		bIsCrouching = false;
-		bIsSliding = false;
-		bCanSlideJump = false;
+		EndSlide();
 	}
 
-	// This should be moved into its own function
-	if (!bIsSliding)
-	{
-		bCanMove = true;
-		bUseControllerRotationYaw = true;
-		bIsAwaitingSlideJump = false;
-		bCanSlideJump = false;
-	}
-
-	// Call Sound
 	Multicast_HandleCrouch();
 }
 
@@ -386,6 +333,49 @@ void APlayerCharacter::EndCrouch()
 	Multicast_HandleCrouch();
 
 	// Reset slide
+	EndSlide();
+}
+
+void APlayerCharacter::StartSlide()
+{
+	// Allow Sliding
+	bIsSliding = true;
+
+	// Check if grounded
+	FHitResult HitResult;
+	FCollisionQueryParams CollisionParams;
+	CollisionParams.AddIgnoredActor(this);
+
+	FVector StartLocation = GetMesh()->GetSocketLocation("GroundSocketTop");
+	FVector EndLocation = GetMesh()->GetSocketLocation("GroundSocketBottom");
+
+	// Check if on ground
+	bCanSlideJump = GetWorld()->LineTraceSingleByChannel(HitResult, GetActorLocation(), EndLocation, ECC_Visibility, CollisionParams);
+
+	// Get Slide Direction
+	SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
+	if (bIsAwaitingSlideJump)
+	{
+		SlideDirection.Z = JumpForceWhileSliding;
+		bIsAwaitingSlideJump = false;
+	}
+	else
+	{
+		SlideDirection.Z = 0.f;
+	}
+
+	// Add Forward Force
+	LaunchCharacter(SlideDirection, true, false);
+
+	// Add Counterforce
+	CurrentSlideForce -= CounterSlideForce;
+
+	// Disable movement when turning camera
+	bUseControllerRotationYaw = false;
+}
+
+void APlayerCharacter::EndSlide()
+{
 	CurrentSlideForce = SlideForce;
 	bIsSliding = false;
 	bCanSlideJump = false;
@@ -407,28 +397,12 @@ void APlayerCharacter::Multicast_HandleCrouch_Implementation()
 	// Slide
 	if (bIsSliding)
 	{
-		// Add Forward Force
-		LaunchCharacter(SlideDirection, true, false);
-
-		// Add Counterforce
-		CurrentSlideForce -= CounterSlideForce;
-
-		// Disable movement when turning camera
-		bUseControllerRotationYaw = false;
-
-		// Disable jump force
-		bIsAwaitingSlideJump = false;
-
-
 		// Play Sound
 		if (!bhasPlayedSlideSound)
 		{
 			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
 			bhasPlayedSlideSound = true;
 		}
-
-		// Add Forward Force
-		LaunchCharacter(SlideDirection, true, false);
 	}
 	else
 	{
@@ -456,17 +430,17 @@ void APlayerCharacter::Hit()
 		bCanHit = false;
 
 		// Line Trace
-		FVector StartLocation = Camera->GetComponentLocation();
-		FVector EndLocation = StartLocation + (Camera->GetComponentRotation().Vector() * HitDistance);
+		HitLocation = GetPawnViewLocation() + (GetBaseAimRotation().Vector() * HitBoxSize.X);
 
 		FHitResult HitResult;
 		FCollisionQueryParams CollisionParams;
 		CollisionParams.AddIgnoredActor(this);
+		FCollisionShape BoxShape = FCollisionShape::MakeBox(HitBoxSize);
 
 		// The line trace
-		bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
+		bool bIsHit = GetWorld()->SweepSingleByChannel(HitResult, HitLocation, HitLocation, GetBaseAimRotation().Quaternion(), ECC_Visibility, BoxShape, CollisionParams);
 
-		//DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::White, false, 1, 0, 1);
+		// DrawDebugBox(GetWorld(), HitLocation, HitBoxSize, GetBaseAimRotation().Quaternion(), FColor::White, false, 10, 0, 1);
 
 		// If hit
 		if (bIsHit)
@@ -476,6 +450,7 @@ void APlayerCharacter::Hit()
 			{
 				// Get Direction
 				FVector NewHitDirection = (HitPlayer->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+				NewHitDirection.Z = 0;
 
 				// Launch
 				if (IsValid(GetEquippedItem()) && GetEquippedItem()->GetItemType() == EItemType::TagItem)
@@ -494,6 +469,12 @@ void APlayerCharacter::Hit()
 				else
 				{
 					HitPlayer->Knockback(NewHitDirection, HitForce);
+				}
+
+				// Chance to do damage
+				if (UKismetMathLibrary::RandomBoolWithWeight(HitDamagePercentage))
+				{
+					HitPlayer->SubtractHealth(HitDamage);
 				}
 			}
 		}
@@ -520,6 +501,7 @@ void APlayerCharacter::Multicast_HandleHit_Implementation()
 	}
 
 }
+
 
 void APlayerCharacter::Knockback(FVector NewHitDirection, float NewKnockbackForce)
 {
