@@ -10,7 +10,6 @@
 #include "Kismet/GameplayStatics.h"
 #include "Components/StaticMeshComponent.h"
 #include "../Interfaces/InteractableInterface.h"
-#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGame/Core/GameMode/MainGameMode.h"
 #include "Components/CapsuleComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -58,11 +57,14 @@ void APlayerCharacter::BeginPlay()
 		GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &APlayerCharacter::SendHeartbeatToServer, 10.f, true);
 
 		// Check if in lobby
-		MainGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
-		if (IsValid(MainGameMode))
-		{
-			MainGameMode->OnPlayerStart(this);
-		}
+		GetWorld()->GetTimerManager().SetTimerForNextTick([this]()
+			{
+				MainGameMode = Cast<AMainGameMode>(UGameplayStatics::GetGameMode(GetWorld()));
+				if (IsValid(MainGameMode))
+				{
+					MainGameMode->OnPlayerStart(this);
+				}
+			});
 	}
 }
 
@@ -136,10 +138,8 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Sliding
 	DOREPLIFETIME(APlayerCharacter, CurrentSlideForce);
 	DOREPLIFETIME(APlayerCharacter, SlideDirection);
-	DOREPLIFETIME(APlayerCharacter, bIsSliding);
-	DOREPLIFETIME(APlayerCharacter, bIsAwaitingSlideJump);
 	DOREPLIFETIME(APlayerCharacter, bCanSlideJump);
-	DOREPLIFETIME(APlayerCharacter, bhasPlayedSlideSound);
+	DOREPLIFETIME(APlayerCharacter, bIsSlideJumping);
 
 	// Hitting
 	DOREPLIFETIME(APlayerCharacter, HitDirection);
@@ -155,11 +155,8 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	DOREPLIFETIME(APlayerCharacter, ItemEquipped);
 
 	// Minigames
-	DOREPLIFETIME(APlayerCharacter, bIsSafeFromStatue);
+	DOREPLIFETIME(APlayerCharacter, DollLastSeenTransform);
 	DOREPLIFETIME(APlayerCharacter, PlayerScore);
-
-	// Gamemode
-	DOREPLIFETIME(APlayerCharacter, MainGameMode);
 }
 
 #pragma region Movement
@@ -206,7 +203,7 @@ void APlayerCharacter::OnJump()
 	{
 		if (bCanSlideJump)
 		{
-			bIsAwaitingSlideJump = true;
+			bIsSlideJumping = true;
 		}
 		else
 		{
@@ -223,6 +220,11 @@ void APlayerCharacter::Multicast_OnJump_Implementation()
 void APlayerCharacter::Server_OnJump_Implementation()
 {
 	OnJump();
+}
+
+void APlayerCharacter::OnRep_IsSlideJumping()
+{
+	LaunchCharacter(FVector(0.f, 0.f, JumpForceWhileSliding), false, true);
 }
 
 #pragma endregion
@@ -342,30 +344,29 @@ void APlayerCharacter::StartSlide()
 	bIsSliding = true;
 
 	// Check if grounded
+	FVector StartLocation = GetCapsuleComponent()->GetComponentLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+	FVector EndLocation = StartLocation - FVector(0.f, 0.f, DistanceFromGroundToSlide);
+
 	FHitResult HitResult;
 	FCollisionQueryParams CollisionParams;
 	CollisionParams.AddIgnoredActor(this);
 
-	FVector StartLocation = GetMesh()->GetSocketLocation("GroundSocketTop");
-	FVector EndLocation = GetMesh()->GetSocketLocation("GroundSocketBottom");
+	bCanSlideJump = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
 
-	// Check if on ground
-	bCanSlideJump = GetWorld()->LineTraceSingleByChannel(HitResult, GetActorLocation(), EndLocation, ECC_Visibility, CollisionParams);
+	DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::White, false, 10, 0, 1);
 
 	// Get Slide Direction
 	SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
-	if (bIsAwaitingSlideJump)
-	{
-		SlideDirection.Z = JumpForceWhileSliding;
-		bIsAwaitingSlideJump = false;
-	}
-	else
-	{
-		SlideDirection.Z = 0.f;
-	}
+	SlideDirection.Z = 0.f;
 
-	// Add Forward Force
-	LaunchCharacter(SlideDirection, true, false);
+	// Slide
+	Multicast_HandleSlide(StartLocation, EndLocation);
+
+	if (bIsSlideJumping)
+	{
+		// Reset once grounded again
+		bIsSlideJumping = !bCanSlideJump;
+	}
 
 	// Add Counterforce
 	CurrentSlideForce -= CounterSlideForce;
@@ -381,7 +382,23 @@ void APlayerCharacter::EndSlide()
 	bCanSlideJump = false;
 	bCanMove = true;
 	bUseControllerRotationYaw = true;
-	bIsAwaitingSlideJump = false;
+	bIsSlideJumping = false;
+}
+
+void APlayerCharacter::Multicast_HandleSlide_Implementation(FVector StartLocation, FVector EndLocation)
+{
+	if (!bIsSlideJumping)
+	{
+		LaunchCharacter(SlideDirection, true, false);
+	}
+}
+
+void APlayerCharacter::OnRep_IsSliding()
+{
+	if (bIsSliding)
+	{
+		UGameplayStatics::SpawnSoundAttached(SlideSound, GetRootComponent());
+	}
 }
 
 void APlayerCharacter::Server_EndCrouch_Implementation()
@@ -393,21 +410,6 @@ void APlayerCharacter::Multicast_HandleCrouch_Implementation()
 {
 	// Crouch
 	bIsCrouching ? Crouch() : UnCrouch();
-
-	// Slide
-	if (bIsSliding)
-	{
-		// Play Sound
-		if (!bhasPlayedSlideSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(GetWorld(), SlideSound, GetActorLocation(), GetActorRotation(), 1.5f);
-			bhasPlayedSlideSound = true;
-		}
-	}
-	else
-	{
-		bhasPlayedSlideSound = false;
-	}
 }
 
 #pragma endregion
@@ -585,7 +587,6 @@ void APlayerCharacter::Die()
 			if (IsValid(Spectator))
 			{
 				GetController()->Possess(Spectator);
-				GetMesh()->SetSimulatePhysics(true);
 			}
 		}
 	}
@@ -668,6 +669,12 @@ void APlayerCharacter::Interact()
 		}
 
 	}
+}
+
+bool APlayerCharacter::IsMovedFromLastSeenPosition()
+{
+	return !UKismetMathLibrary::NearlyEqual_TransformTransform(GetActorTransform(), DollLastSeenTransform, 
+		DollMoveErrorMargin, DollLookErrorMargin);
 }
 
 void APlayerCharacter::Server_Interact_Implementation()

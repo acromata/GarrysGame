@@ -66,7 +66,7 @@ public:
 protected:
 
 	// Gay mode
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly)
 	class AMainGameMode* MainGameMode;
 
 	// Movement
@@ -116,18 +116,27 @@ protected:
 	// Slide
 	void StartSlide();
 	void EndSlide();
+	UFUNCTION(NetMulticast, Unreliable)
+	void Multicast_HandleSlide(FVector StartLocation, FVector EndLocation);
+
+	UFUNCTION()
+	void OnRep_IsSliding();
+	UFUNCTION()
+	void OnRep_IsSlideJumping();
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsCrouching;
-	UPROPERTY(Replicated, BlueprintReadOnly)
+	UPROPERTY(ReplicatedUsing = OnRep_IsSliding, BlueprintReadOnly)
 	bool bIsSliding;
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	bool bhasPlayedSlideSound;
+	UPROPERTY(ReplicatedUsing = OnRep_IsSlideJumping, BlueprintReadOnly)
+	bool bIsSlideJumping;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float SlideForce = 1000.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float CounterSlideForce = 1.f;
+	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
+	float DistanceFromGroundToSlide = 50.f;
 	UPROPERTY(Replicated)
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
@@ -136,8 +145,6 @@ protected:
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
 
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	bool bIsAwaitingSlideJump;
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bCanSlideJump;
 
@@ -226,16 +233,25 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Interacting")
 	float InteractRange = 500.f;
 
-	// Minigames
-	UPROPERTY(Replicated, BlueprintReadWrite)
-	bool bIsSafeFromStatue;
+	// Doll minigame
+	UFUNCTION(BlueprintCallable)
+	void SetLastSeenPosition() { DollLastSeenTransform = GetActorTransform(); }
+	UFUNCTION(BlueprintCallable)
+	bool IsMovedFromLastSeenPosition();
+	UPROPERTY(EditAnywhere, Category = "Minigames|Doll")
+	float DollMoveErrorMargin = 50;
+	float DollLookErrorMargin = 10;
+	UPROPERTY(Replicated, BlueprintReadOnly)
+	FTransform DollLastSeenTransform;
 
+	// Score
 	UFUNCTION(Server, Reliable)
 	void Server_SetPlayerScore(float NewScore);
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	float PlayerScore;
 
-	UPROPERTY(EditDefaultsOnly, Category = "TagMinigame")
+	// Tag minigame
+	UPROPERTY(EditDefaultsOnly, Category = "Minigames|Tag")
 	UItemData* StickTagItem;
 
 	// Heartbeat

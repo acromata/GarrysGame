@@ -2,7 +2,6 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
-#include "GarrysGame/Core/GameInstance/GarrysGame_GameInstance.h"
 #include "GarrysGameGameState.generated.h"
 
 UENUM(BlueprintType)
@@ -18,6 +17,11 @@ enum ETimerEnum
 	LTimerNotReady,
 	LTimerAllReady
 };
+
+class ULevelData;
+class UItemData;
+class UServerDataSubsystem;
+class AMainGameMode;
 
 UCLASS()
 class GARRYSGAME_API AGarrysGameGameState : public AGameStateBase
@@ -61,13 +65,16 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, Category = "Nugget")
 	UItemData* NuggetItem;
-
-	class AMainGameMode* MainGameMode;
+	UPROPERTY(BlueprintReadOnly)
+	AMainGameMode* MainGameMode;
 
 	UPROPERTY(BlueprintReadOnly)
-	UGarrysGame_GameInstance* GameInstance;
+	UServerDataSubsystem* ServerDataSubsystem;
 
 public:
+
+	// Game mode
+	void SetMainGameMode(AMainGameMode* GM) { MainGameMode = GM; }
 
 	// Timer
 	UFUNCTION(BlueprintCallable)
@@ -95,12 +102,20 @@ public:
 	UFUNCTION(BlueprintCallable)
 	ULevelData* GetLobbyData() const { return LobbyLevelData; }
 
+	void OnOpenedLobby();
+
+	void OnOpenedGame();
+
 	UFUNCTION(BlueprintCallable)
 	ULevelData* GetWinLevelData() const { return WinLevelData; }
 
 	UFUNCTION(BlueprintCallable)
 	TArray<ULevelData*> GetLevels() const { return Levels; }
 
-	UPROPERTY(Replicated, BlueprintReadWrite)
+	UPROPERTY(BlueprintReadWrite, Replicated)
 	ULevelData* CurrentLevelData;
+
+	// Player data
+	UPROPERTY(BlueprintReadWrite, Replicated)
+	TArray<class APlayerCharacter*> PlayersAliveInGame;
 };

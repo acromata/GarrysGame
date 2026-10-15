@@ -4,6 +4,9 @@
 #include "GameFramework/GameModeBase.h"
 #include "MainGameMode.generated.h"
 
+class UServerDataSubsystem;
+class APlayerCharacter;
+class UItemData;
 
 UCLASS()
 class GARRYSGAME_API AMainGameMode : public AGameModeBase
@@ -22,18 +25,12 @@ protected:
 	void ReturnToLobby();
 	UFUNCTION(BlueprintCallable)
 	void OnGameEnd();
-	UPROPERTY(BlueprintReadWrite)
-	bool bAcceptNewPlayers;
 
 	// Level
 	void SetCurrentLevel(ULevelData* Data);
 
 	UPROPERTY(BlueprintReadOnly)
 	FString LevelToOpen;
-
-	// Game instance
-	UPROPERTY(BlueprintReadWrite)
-	class UGarrysGame_GameInstance* GameInstance;
 
 	// Game State
 	UPROPERTY(BlueprintReadWrite)
@@ -87,6 +84,6 @@ public:
 	UPROPERTY(BlueprintReadWrite)
 	APlayerCharacter* PlayerTagged;
 
-	// Game Instance
-	void SetGameInstance(class UGarrysGame_GameInstance* GI) { GameInstance = GI; }
+	UPROPERTY(BlueprintReadOnly)
+	UServerDataSubsystem* ServerDataSubsystem;
 };

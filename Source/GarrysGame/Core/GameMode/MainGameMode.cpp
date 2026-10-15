@@ -4,48 +4,59 @@
 #include "GarrysGame/Player/PlayerCharacter.h"
 #include "Kismet/GameplayStatics.h"
 #include "EngineUtils.h"
+#include "Core/GameInstance/ServerDataSubsystem.h"
 
 void AMainGameMode::BeginPlay()
 {
-	MainGameState = Cast<AGarrysGameGameState>(GameState);
-	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
-	if (IsValid(GameInstance) && IsValid(MainGameState) && IsValid(GameInstance->GetCurrentLevel()))
+	if (IsValid(GetGameInstance()))
 	{
-		MainGameState->CurrentLevelData = GameInstance->GetCurrentLevel();
+		ServerDataSubsystem = UGameInstance::GetSubsystem<UServerDataSubsystem>(GetGameInstance());
+	}
+
+	if (IsValid(MainGameState = Cast<AGarrysGameGameState>(GameState)))
+	{
+		MainGameState->SetMainGameMode(this);
 	}
 
 	// Check for heartbeats
 	FTimerHandle HeartbeatTimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(HeartbeatTimerHandle, this, &AMainGameMode::CheckForMissedHeartbeats, 15.f, true);
-
-	bUseSeamlessTravel = true;
-	bAcceptNewPlayers = true;
 }
 
 void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
 {
-	if (UGameplayStatics::GetCurrentLevelName(GetWorld(), true) == "Lobby")
+	if (HasAuthority())
 	{
-		Player->SetEquippedItem(LobbyNuggetItem);
-		Player->EnablePlayerInput();
-		bAcceptNewPlayers = true;
-
-		if (IsValid(GameInstance))
+		// If in lobby
+		if (UGameplayStatics::GetCurrentLevelName(GetWorld(), true) == "Lobby")
 		{
-			GameInstance->PlayersDead.Empty();
-		}
-		
-		UE_LOG(LogTemp, Warning, TEXT("Player Joined lobby"));
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Player joined game"));
+			Player->SetEquippedItem(LobbyNuggetItem);
+			Player->EnablePlayerInput();
 
-		if (GameInstance->PlayersDead.Contains(Player) || !bAcceptNewPlayers)
-		{
-			Player->Die();
-			UE_LOG(LogTemp, Warning, TEXT("New player joined dead"));
+			if (IsValid(MainGameState))
+			{
+				MainGameState->OnOpenedLobby();
+			}
+
+			UE_LOG(LogTemp, Warning, TEXT("Player Joined lobby"));
+			return;
 		}
+
+		// If is in game
+		if (IsValid(ServerDataSubsystem) && IsValid(Player->GetPlayerState()))
+		{
+			FUniqueNetIdRepl UUID = Player->GetPlayerState()->GetUniqueId();
+			if (ServerDataSubsystem->PlayerUUIDsAliveInGame.Contains(UUID))
+			{
+				MainGameState->PlayersAliveInGame.Add(Player);
+				UE_LOG(LogTemp, Warning, TEXT("Player joined game"));
+				return;
+			}
+		}
+
+		// Player joined late
+		Player->Die();
+		UE_LOG(LogTemp, Warning, TEXT("Spectator joined game"));
 	}
 }
 
@@ -66,11 +77,16 @@ void AMainGameMode::SetLevelToOpen(ULevelData* LevelData)
 	if (IsValid(LevelData))
 	{
 		LevelToOpen = LevelData->GetLevelName();
-		MainGameState->CurrentLevelData = LevelData;
+		ServerDataSubsystem->CurrentLevelData = LevelData;
 
-		if (IsValid(GameInstance))
+		if (IsValid(ServerDataSubsystem))
 		{
-			GameInstance->SetCurrentLevel(LevelData);
+			ServerDataSubsystem->CurrentLevelData = LevelData;
+			// Add player UUIDs
+			for (APlayerCharacter* Player : GetAlivePlayers())
+			{
+				ServerDataSubsystem->PlayerUUIDsAliveInGame.Add(Player->GetPlayerState()->GetUniqueId());
+			}
 		}
 
 		GetWorld()->ServerTravel(LevelToOpen);
@@ -172,9 +188,10 @@ TArray<APlayerCharacter*> AMainGameMode::GetConnectedPlayers()
 
 void AMainGameMode::OnPlayerDeath(APlayerCharacter* Player)
 {
-	if (IsValid(GameInstance))
+	if (IsValid(ServerDataSubsystem))
 	{
-		GameInstance->PlayersDead.Add(Player);
+		MainGameState->PlayersAliveInGame.RemoveSingle(Player);
+		UE_LOG(LogTemp, Warning, TEXT("Player died, %d remaining"), GetNumOfAlivePlayers());
 	}
 
 	if (GetNumOfAlivePlayers() < 1)
@@ -182,7 +199,7 @@ void AMainGameMode::OnPlayerDeath(APlayerCharacter* Player)
 		UE_LOG(LogTemp, Warning, TEXT("All players dead, game ended"));
 		MainGameState->SetTimerType(ETimerEnum::TimerPostGame);
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Player died, %d remaining"), GetNumOfAlivePlayers());
+
 }
 
 APlayerCharacter* AMainGameMode::GiveRandomPlayerItem(UItemData* Item)

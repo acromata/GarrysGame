@@ -6,25 +6,27 @@
 #include "GarrysGame/DataAssets/ItemData.h"
 #include "GarrysGame/DataAssets/LevelData.h"
 #include "GarrysGame/Core/GameMode/MainGameMode.h"
+#include "Core/GameInstance/ServerDataSubsystem.h"
 
 void AGarrysGameGameState::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Timer
-	if (UGameplayStatics::GetCurrentLevelName(GetWorld(), true) == "Lobby")
+	if (HasAuthority())
 	{
-		SetTimerType(ETimerEnum::LTimerNotReady);
-	}
-	else
-	{
+		// Server data subsystem
+		if (IsValid(GetGameInstance()))
+		{
+			if (IsValid(MainGameMode->ServerDataSubsystem))
+			{
+				ServerDataSubsystem = MainGameMode->ServerDataSubsystem;
+				CurrentLevelData = ServerDataSubsystem->CurrentLevelData;
+			}
+		}
+
+		// Timer
 		SetTimerType(ETimerEnum::TimerPreGame);
 	}
-	
-	// Game Instance
-	GameInstance = Cast<UGarrysGame_GameInstance>(GetGameInstance());
-
-	MainGameMode = GetWorld()->GetAuthGameMode<AMainGameMode>();
 }
 
 void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -34,9 +36,18 @@ void AGarrysGameGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>&
 	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerTime);
 	DOREPLIFETIME(AGarrysGameGameState, CurrentTimerEnum);
 	DOREPLIFETIME(AGarrysGameGameState, CurrentLevelData);
+
+	DOREPLIFETIME(AGarrysGameGameState, PlayersAliveInGame);
+	DOREPLIFETIME(AGarrysGameGameState, CurrentLevelData);
 }
 
-#pragma endregion
+void AGarrysGameGameState::OnOpenedLobby()
+{
+	PlayersAliveInGame = MainGameMode->GetAlivePlayers();
+	CurrentLevelData = GetLobbyData();
+
+	SetTimerType(ETimerEnum::LTimerNotReady);
+}
 
 #pragma region Timer
 
@@ -44,9 +55,9 @@ int32 AGarrysGameGameState::GetTimeFromTimerEnum()
 {
 	// Get minigame time from minigame data
 	int32 MinigameTimeLength = 62;
-	if (IsValid(GameInstance) && IsValid(GameInstance->GetCurrentLevel()) && IsValid(GameInstance->GetCurrentLevel()->GetMinigameData()))
+	if (IsValid(CurrentLevelData) && IsValid(CurrentLevelData->GetMinigameData()))
 	{
-		MinigameTimeLength = GameInstance->GetCurrentLevel()->GetMinigameData()->GetMinigameTime();
+		MinigameTimeLength = CurrentLevelData->GetMinigameData()->GetMinigameTime();
 	}
 
 	// Return time based off current enum
