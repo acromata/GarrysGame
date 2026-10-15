@@ -102,7 +102,8 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 
 		Input->BindAction(LookAction, ETriggerEvent::Triggered, this, &APlayerCharacter::Look);
 
-		Input->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayerCharacter::OnJump);
+		Input->BindAction(JumpAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartJump);
+		Input->BindAction(JumpAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndJump);
 
 		Input->BindAction(SprintAction, ETriggerEvent::Triggered, this, &APlayerCharacter::StartSprint);
 		Input->BindAction(SprintAction, ETriggerEvent::Completed, this, &APlayerCharacter::EndSprint);
@@ -138,7 +139,6 @@ void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 	// Sliding
 	DOREPLIFETIME(APlayerCharacter, CurrentSlideForce);
 	DOREPLIFETIME(APlayerCharacter, SlideDirection);
-	DOREPLIFETIME(APlayerCharacter, bCanSlideJump);
 	DOREPLIFETIME(APlayerCharacter, bIsSlideJumping);
 
 	// Hitting
@@ -191,40 +191,48 @@ void APlayerCharacter::Look(const FInputActionValue& InputValue)
 	}
 }
 
-void APlayerCharacter::OnJump()
+void APlayerCharacter::StartJump()
 {
-	if (!HasAuthority())
-	{
-		Server_OnJump();
-		return;
-	}
-
 	if (bAllowInput)
 	{
-		if (bCanSlideJump)
+		if (bIsSliding)
 		{
-			bIsSlideJumping = true;
+			if (GetWorld()->GetNetMode() < NM_Client && IsGroundedDuringSlide())
+			{
+				LaunchCharacter(FVector(SlideDirection.X, SlideDirection.Y, JumpForceWhileSliding), true, true);
+			}
+			else
+			{
+				Server_StartSlideJump();
+			}
 		}
 		else
 		{
-			Multicast_OnJump();
+			Jump();
 		}
 	}
 }
 
-void APlayerCharacter::Multicast_OnJump_Implementation()
+void APlayerCharacter::EndJump()
 {
-	Jump();
+	if (bIsSlideJumping)
+	{
+		Server_EndSlideJump();
+	}
 }
 
-void APlayerCharacter::Server_OnJump_Implementation()
+void APlayerCharacter::Server_StartSlideJump_Implementation()
 {
-	OnJump();
+	if (IsGroundedDuringSlide())
+	{
+		LaunchCharacter(FVector(SlideDirection.X, SlideDirection.Y, JumpForceWhileSliding), true, true);
+		bIsSlideJumping = true;
+	}
 }
 
-void APlayerCharacter::OnRep_IsSlideJumping()
+void APlayerCharacter::Server_EndSlideJump_Implementation()
 {
-	LaunchCharacter(FVector(0.f, 0.f, JumpForceWhileSliding), false, true);
+	bIsSlideJumping = false;
 }
 
 #pragma endregion
@@ -291,9 +299,8 @@ void APlayerCharacter::StartCrouch()
 		return;
 	}
 
-	if (GetCharacterMovement()->CanCrouchInCurrentState() && bAllowInput)
+	if (bAllowInput)
 	{
-		// Crouch
 		bIsCrouching = true;
 
 		// Slide
@@ -307,14 +314,9 @@ void APlayerCharacter::StartCrouch()
 			// Unslide
 			EndSlide();
 		}
-	}
-	else
-	{
-		bIsCrouching = false;
-		EndSlide();
-	}
 
-	Multicast_HandleCrouch();
+		Multicast_HandleCrouch();
+	}
 }
 
 void APlayerCharacter::Server_StartCrouch_Implementation()
@@ -343,33 +345,19 @@ void APlayerCharacter::StartSlide()
 	// Allow Sliding
 	bIsSliding = true;
 
-	// Check if grounded
-	FVector StartLocation = GetCapsuleComponent()->GetComponentLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
-	FVector EndLocation = StartLocation - FVector(0.f, 0.f, DistanceFromGroundToSlide);
-
-	FHitResult HitResult;
-	FCollisionQueryParams CollisionParams;
-	CollisionParams.AddIgnoredActor(this);
-
-	bCanSlideJump = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECC_Visibility, CollisionParams);
-
-	DrawDebugLine(GetWorld(), StartLocation, EndLocation, FColor::White, false, 10, 0, 1);
-
 	// Get Slide Direction
 	SlideDirection = CurrentSlideForce * GetVelocity().GetUnsafeNormal();
-	SlideDirection.Z = 0.f;
+	SlideDirection.Z = 0;
 
-	// Slide
-	Multicast_HandleSlide(StartLocation, EndLocation);
-
-	if (bIsSlideJumping)
+	if (!bIsSlideJumping)
 	{
-		// Reset once grounded again
-		bIsSlideJumping = !bCanSlideJump;
-	}
+		// Slide
+		LaunchCharacter(SlideDirection, true, false);
+		Multicast_HandleSlide();
 
-	// Add Counterforce
-	CurrentSlideForce -= CounterSlideForce;
+		// Add Counterforce when grounded
+		CurrentSlideForce -= CounterSlideForce;
+	}
 
 	// Disable movement when turning camera
 	bUseControllerRotationYaw = false;
@@ -379,18 +367,14 @@ void APlayerCharacter::EndSlide()
 {
 	CurrentSlideForce = SlideForce;
 	bIsSliding = false;
-	bCanSlideJump = false;
 	bCanMove = true;
 	bUseControllerRotationYaw = true;
 	bIsSlideJumping = false;
 }
 
-void APlayerCharacter::Multicast_HandleSlide_Implementation(FVector StartLocation, FVector EndLocation)
+void APlayerCharacter::Multicast_HandleSlide_Implementation()
 {
-	if (!bIsSlideJumping)
-	{
-		LaunchCharacter(SlideDirection, true, false);
-	}
+	LaunchCharacter(SlideDirection, true, false);
 }
 
 void APlayerCharacter::OnRep_IsSliding()
@@ -398,6 +382,30 @@ void APlayerCharacter::OnRep_IsSliding()
 	if (bIsSliding)
 	{
 		UGameplayStatics::SpawnSoundAttached(SlideSound, GetRootComponent());
+	}
+}
+
+bool APlayerCharacter::IsGroundedDuringSlide()
+{
+	if (!bIsSliding)
+	{
+		// not sliding
+		return false;
+	}
+	else
+	{
+		// Check if grounded
+		FVector TraceLocation = GetCapsuleComponent()->GetComponentLocation() - FVector(0.f, 0.f, GetCapsuleComponent()->GetScaledCapsuleHalfHeight());
+
+		FHitResult HitResult;
+		FCollisionQueryParams CollisionParams;
+		CollisionParams.AddIgnoredActor(this);
+		FCollisionShape SlideShape = FCollisionShape::MakeSphere(SlideGroundedRadiusCheck);
+
+		// DrawDebugSphere(GetWorld(), TraceLocation, SlideGroundedRadiusCheck, 8, FColor::White, false, 10, 0, 1);
+
+		return GetWorld()->SweepSingleByChannel(HitResult, TraceLocation, TraceLocation, FQuat::Identity,
+			ECC_Visibility, SlideShape, CollisionParams);
 	}
 }
 
@@ -504,7 +512,6 @@ void APlayerCharacter::Multicast_HandleHit_Implementation()
 
 }
 
-
 void APlayerCharacter::Knockback(FVector NewHitDirection, float NewKnockbackForce)
 {
 	if (!HasAuthority())
@@ -562,11 +569,11 @@ void APlayerCharacter::SubtractHealth(int32 Health)
 	}
 }
 
-void APlayerCharacter::Die()
+void APlayerCharacter::Die(bool bShowRagdoll)
 {
 	if (!HasAuthority())
 	{
-		Server_Die();
+		Server_Die(bShowRagdoll);
 		return;
 	}
 
@@ -574,11 +581,18 @@ void APlayerCharacter::Die()
 	{
 		bIsDead = true;
 		MainGameMode->OnPlayerDeath(this);
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 
 		// Ragdoll
-		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-		GetMesh()->SetCollisionProfileName(FName("Ragdoll"));
-		GetMesh()->SetSimulatePhysics(true);
+		if (bShowRagdoll)
+		{
+			GetMesh()->SetCollisionProfileName(FName("Ragdoll"));
+			GetMesh()->SetSimulatePhysics(true);
+		}
+		else
+		{
+			GetMesh()->SetVisibility(false);
+		}
 
 
 		if (SpectatorPawn)
@@ -592,9 +606,9 @@ void APlayerCharacter::Die()
 	}
 }
 
-void APlayerCharacter::Server_Die_Implementation()
+void APlayerCharacter::Server_Die_Implementation(bool bShowRagdoll)
 {
-	Die();
+	Die(bShowRagdoll);
 }
 
 void APlayerCharacter::Server_SubtractHealth_Implementation(int32 Health)

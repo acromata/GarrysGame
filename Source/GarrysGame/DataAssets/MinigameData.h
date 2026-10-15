@@ -20,6 +20,8 @@ protected:
 	FString MinigameDescription;
 	UPROPERTY(EditDefaultsOnly)
 	int32 MinigameTime;
+	UPROPERTY(EditDefaultsOnly)
+	int32 MinimumPlayerCount = 1;
 
 public:
 
@@ -29,4 +31,6 @@ public:
 	FString GetMinigameDescription() const { return MinigameDescription; }
 	UFUNCTION(BlueprintCallable)
 	int32 GetMinigameTime() const { return MinigameTime; }
+	UFUNCTION(BlueprintCallable)
+	int32 GetMinimumPlayerCount() const { return MinimumPlayerCount; }
 };

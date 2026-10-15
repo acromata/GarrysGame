@@ -55,7 +55,7 @@ void AMainGameMode::OnPlayerStart(APlayerCharacter* Player)
 		}
 
 		// Player joined late
-		Player->Die();
+		Player->Die(false);
 		UE_LOG(LogTemp, Warning, TEXT("Spectator joined game"));
 	}
 }
@@ -99,16 +99,20 @@ void AMainGameMode::OpenRandomLevel()
 	UE_LOG(LogTemp, Warning, TEXT("Called open random level function"));
 
 	int32 RandNum = FMath::RandRange(0, (MainGameState->GetLevels().Num() - 1));
-	if (IsValid(MainGameState->GetLevels()[RandNum]) && MainGameState->GetLevels().IsValidIndex(RandNum))
+	while (true)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Called level to open"));
-		SetLevelToOpen(MainGameState->GetLevels()[RandNum]);
+		
+		if (IsValid(MainGameState->GetLevels()[RandNum]) && MainGameState->GetLevels().IsValidIndex(RandNum))
+		{
+			if (MainGameState->GetLevels()[RandNum]->GetMinigameData()->GetMinimumPlayerCount() >= GetNumOfAlivePlayers())
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Called level to open"));
+				SetLevelToOpen(MainGameState->GetLevels()[RandNum]);
+				return;
+			}
+		}
 	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Invalid level, Returning to lobby..."));
-		SetLevelToOpen(MainGameState->GetLobbyData());
-	}
+
 }
 
 void AMainGameMode::ReturnToLobby()

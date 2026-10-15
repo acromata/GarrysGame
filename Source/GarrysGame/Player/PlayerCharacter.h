@@ -72,11 +72,12 @@ protected:
 	// Movement
 	void Move(const FInputActionValue& InputValue);
 	void Look(const FInputActionValue& InputValue);
-	void OnJump();
+	void StartJump();
+	void EndJump();
 	UFUNCTION(Server, Reliable)
-	void Server_OnJump();
-	UFUNCTION(NetMulticast, Reliable)
-	void Multicast_OnJump();
+	void Server_StartSlideJump();
+	UFUNCTION(Server, Reliable)
+	void Server_EndSlideJump();
 
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	bool bAllowInput;
@@ -117,18 +118,18 @@ protected:
 	void StartSlide();
 	void EndSlide();
 	UFUNCTION(NetMulticast, Unreliable)
-	void Multicast_HandleSlide(FVector StartLocation, FVector EndLocation);
+	void Multicast_HandleSlide();
 
 	UFUNCTION()
 	void OnRep_IsSliding();
-	UFUNCTION()
-	void OnRep_IsSlideJumping();
+	UFUNCTION(BlueprintCallable, BlueprintPure)
+	bool IsGroundedDuringSlide();
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsCrouching;
 	UPROPERTY(ReplicatedUsing = OnRep_IsSliding, BlueprintReadOnly)
 	bool bIsSliding;
-	UPROPERTY(ReplicatedUsing = OnRep_IsSlideJumping, BlueprintReadOnly)
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	bool bIsSlideJumping;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
@@ -136,17 +137,14 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float CounterSlideForce = 1.f;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
-	float DistanceFromGroundToSlide = 50.f;
-	UPROPERTY(Replicated)
+	float SlideGroundedRadiusCheck = 50.f;
+	UPROPERTY(Replicated, BlueprintReadOnly)
 	float CurrentSlideForce;
 	UPROPERTY(EditDefaultsOnly, Category = "Movement|Slide")
 	float JumpForceWhileSliding = 420.f;
 
 	UPROPERTY(Replicated, BlueprintReadOnly)
 	FVector SlideDirection;
-
-	UPROPERTY(Replicated, BlueprintReadOnly)
-	bool bCanSlideJump;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Hitting")
 	USoundBase* SlideSound;
@@ -199,7 +197,7 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void Server_SubtractHealth(int32 Health);
 	UFUNCTION(Server, Reliable)
-	void Server_Die();
+	void Server_Die(bool bShowRagdoll);
 
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
@@ -267,7 +265,7 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void SubtractHealth(int32 Health);
 	UFUNCTION(BlueprintCallable)
-	void Die();
+	void Die(bool bShowRagdoll = true);
 
 	// Equipped Items
 	UFUNCTION(BlueprintCallable)
